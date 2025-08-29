@@ -1,0 +1,196 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+# Indie Game Galaxy Information Architecture (IA)
+
+## 1. 사이트맵 (Site Map)
+
+```
+Indie Game Galaxy
+├── / (우주 맵 홈)
+├── /adopt-planet (행성 분양 신청)
+├── /submission-success (신청 완료)
+├── /planet/:id (행성 상세 - 모달/딥링크)
+├── /admin (관리자 대시보드)
+│   ├── /admin/login (관리자 로그인)
+│   ├── /admin/dashboard (승인 관리)
+│   ├── /admin/planets (행성 현황)
+│   └── /admin/analytics (기본 통계)
+├── /404 (페이지를 찾을 수 없음)
+└── /500 (서버 오류)
+```
+
+## 2. 사용자 흐름 (User Flow)
+
+### 핵심 작업 1: 게이머의 게임 발견 여정
+1. 사용자가 메인 URL 접속
+2. 우주 맵 자동 로딩 (3초 이내)
+3. 마우스 드래그로 우주 공간 탐험
+4. 관심 있는 행성에 마우스 호버
+5. 미리보기 카드 팝업 확인
+6. 행성 클릭 → 상세 모달 오픈
+7. 게임 정보 확인 후 외부 링크 클릭
+8. 새 탭에서 스팀/홈페이지 이동
+9. 브라우저 돌아와서 계속 탐험
+
+### 핵심 작업 2: 개발자의 행성 분양 신청
+1. 상단 네비게이션 "Adopt Your Planet" 버튼 클릭
+2. `/adopt-planet` 페이지로 이동
+3. 게임 정보 입력 폼 작성
+   - 게임명, 설명, 장르 선택
+   - 썸네일 이미지 업로드 (드래그 앤 드롭)
+   - 스크린샷/GIF 업로드
+   - 행성 유형 선택 (픽셀 아트 미리보기)
+   - 외부 링크 입력
+4. "Submit for Review" 버튼 클릭
+5. `/submission-success` 페이지로 리다이렉트
+6. 확인 메시지 및 예상 승인 시간 안내
+7. 이메일로 승인 알림 대기
+
+### 핵심 작업 3: 관리자의 승인 관리
+1. `/admin/login`에서 2FA 로그인
+2. `/admin/dashboard` 대시보드 접속
+3. "Pending" 탭에서 신규 신청 목록 확인
+4. 각 신청 항목 클릭하여 상세 정보 검토
+5. 필요 시 "Preview Planet" 버튼으로 미리보기
+6. "Approve" 또는 "Reject" 버튼 클릭
+7. 상태 변경 및 개발자에게 이메일 발송
+8. `/admin/analytics`에서 일간 승인 통계 확인
+
+## 3. 네비게이션 구조 (Navigation Structure)
+
+### 글로벌 네비게이션 바 (GNB)
+- **위치**: 상단 고정 (64px 높이)
+- **배경**: 반투명 딥 스페이스 블랙 + 백드롭 블러
+- **좌측**: 로고 "Indie Game Galaxy" (Orbitron Bold)
+- **우측**: "Adopt Your Planet" 버튼 (Primary Button 스타일)
+
+### 관리자 네비게이션 (Admin Only)
+- **사이드바 네비게이션** (관리자 페이지 전용)
+  - Dashboard (승인 관리)
+  - Planets (행성 현황)
+  - Analytics (기본 통계)
+  - Logout
+
+### 푸터 (Footer)
+- **최소한의 푸터** (우주 맵 하단)
+- 저작권 정보, 이용약관, 개인정보처리방침
+- 소셜 미디어 링크 (픽셀 아트 아이콘)
+
+## 4. 페이지 계층 구조 (Page Hierarchy)
+
+```
+/ (Depth 0 - 루트)
+├── adopt-planet (Depth 1)
+├── submission-success (Depth 1)
+├── planet/:id (Depth 1 - 동적 라우트)
+├── admin (Depth 1)
+│   ├── login (Depth 2)
+│   ├── dashboard (Depth 2)
+│   ├── planets (Depth 2)
+│   └── analytics (Depth 2)
+├── 404 (Depth 1)
+└── 500 (Depth 1)
+```
+
+## 5. 콘텐츠 구성 (Content Organization)
+
+| 페이지 | 주요 콘텐츠 요소 |
+|---|---|
+| **우주 맵 (/)** | WebGL/Canvas 우주 배경, 픽셀 아트 행성들, 호버 미리보기 카드, 상세 모달 오버레이, 글로벌 네비게이션 |
+| **행성 분양 (/adopt-planet)** | 신청 폼, 게임 정보 입력 필드, 파일 업로드 영역, 행성 유형 선택 그리드, 제출 버튼 |
+| **신청 완료 (/submission-success)** | 성공 메시지, 예상 승인 시간, 이메일 알림 안내, 홈으로 돌아가기 버튼 |
+| **행성 상세 (모달)** | 회전하는 3D 행성, 게임 정보 패널, 스크린샷/GIF 갤러리, 외부 링크 버튼, 닫기 버튼 |
+| **관리자 대시보드** | 신청 목록 테이블, 승인/거절 버튼, 미리보기 기능, 상태 필터, 검색 기능 |
+| **에러 페이지** | 픽셀 아트 에러 일러스트, 에러 메시지, 홈으로 돌아가기 버튼 |
+
+## 6. 인터랙션 패턴 (Interaction Patterns)
+
+### 우주 맵 인터랙션
+- **드래그 패닝**: 마우스 드래그로 무한 스크롤, 관성 효과 적용
+- **휠 줌**: 마우스 위치 기준 연속적 확대/축소
+- **행성 호버**: 즉시 미리보기 카드 표시, 글로우 효과
+- **행성 클릭**: 상세 모달 오픈, 배경 블러 처리
+
+### 폼 인터랙션
+- **파일 업로드**: 드래그 앤 드롭 + 클릭 업로드, 진행률 표시
+- **실시간 검증**: 필드별 즉시 피드백, 에러 상태 표시
+- **행성 유형 선택**: 클릭으로 선택, 선택 상태 글로우 효과
+
+### 피드백 패턴
+- **토스트 알림**: 우상단에서 슬라이드 다운, 4초 자동 사라짐
+- **로딩 상태**: 회전하는 픽셀 행성 스피너
+- **호버 피드백**: 200ms 내 글로우 효과 표시
+- **클릭 피드백**: 버튼 스케일 애니메이션
+
+### 모달 패턴
+- **상세 모달**: 중앙 오버레이, 배경 클릭으로 닫기
+- **확인 모달**: 중요한 액션 전 확인 요청
+- **ESC 키**: 모든 모달 닫기 지원
+
+## 7. URL 구조 (URL Structure)
+
+### 일반 페이지
+- **홈페이지**: `/`
+- **행성 분양**: `/adopt-planet`
+- **신청 완료**: `/submission-success`
+
+### 동적 라우트
+- **행성 상세**: `/planet/[planet-id]` (예: `/planet/cosmic-runner-2024`)
+- **관리자 페이지**: `/admin/[section]`
+
+### SEO 최적화 URL
+- **행성 ID**: 게임명 기반 slug (예: `cosmic-runner-2024`)
+- **소문자 + 하이픈**: 일관된 네이밍 컨벤션
+- **의미있는 경로**: 계층 구조 반영
+
+### 쿼리 매개변수
+- **우주 맵 위치**: `/?x=1200&y=800&zoom=1.5` (공유용)
+- **필터링**: `/admin/dashboard?status=pending&sort=date`
+- **페이지네이션**: `/admin/planets?page=2&limit=20`
+
+## 8. 컴포넌트 계층 구조 (Component Hierarchy)
+
+### 글로벌 컴포넌트
+- **Header**: 상단 네비게이션 바
+- **Footer**: 최소한의 하단 정보
+- **ToastSystem**: 전역 알림 관리
+- **LoadingSpinner**: 픽셀 아트 로딩 애니메이션
+- **ErrorBoundary**: 에러 처리 래퍼
+
+### 우주 맵 컴포넌트
+- **UniverseCanvas**: WebGL/Canvas 메인 컨테이너
+- **PlanetRenderer**: 개별 행성 렌더링
+- **HoverPreviewCard**: 호버 시 미리보기 카드
+- **PlanetDetailModal**: 상세 정보 모달
+- **NavigationControls**: 줌/패닝 컨트롤
+
+### 폼 컴포넌트
+- **AdoptionForm**: 행성 분양 신청 폼
+- **FileUploader**: 드래그 앤 드롭 업로드
+- **PlanetTypeSelector**: 행성 유형 선택 그리드
+- **FormField**: 재사용 가능한 입력 필드
+- **ValidationMessage**: 에러/성공 메시지
+
+### 관리자 컴포넌트
+- **AdminSidebar**: 관리자 사이드바 네비게이션
+- **PendingTable**: 승인 대기 목록 테이블
+- **ApprovalActions**: 승인/거절 버튼 그룹
+- **PlanetPreview**: 행성 미리보기 모달
+- **AnalyticsChart**: 기본 통계 차트
+
+### 카드 컴포넌트
+- **GamePreviewCard**: 게임 미리보기 카드
+- **PlanetInfoCard**: 행성 정보 카드
+- **StatCard**: 통계 정보 카드
+- **SuccessCard**: 성공 메시지 카드
+
+### UI 기본 컴포넌트
+- **Button**: Primary/Secondary/Ghost 버튼
+- **Input**: 텍스트 입력 필드
+- **Select**: 드롭다운 선택
+- **Modal**: 기본 모달 래퍼
+- **Badge**: 상태 표시 뱃지
+- **ProgressBar**: 진행률 표시바

@@ -67,3 +67,38 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Indie Game Galaxy 폰트 설정 */
+@layer base {
+  .font-orbitron {
+    font-family: var(--font-orbitron), monospace;
+    letter-spacing: 0.5px;
+  }
+  
+  .font-pixel {
+    font-family: var(--font-pixel), monospace;
+    letter-spacing: 1px;
+  }
+}
+
+/* 우주 맵 스크롤바 숨기기 */
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* 우주 맵 선택 방지 */
+@layer utilities {
+  .select-none {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+  }
+}

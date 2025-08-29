@@ -1,0 +1,105 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+Of course. As a senior technical architect, my focus is on creating a specification that empowers the development team to build the right thing, quickly and effectively. The previous TRD was overly prescriptive and filled with project management details and implementation minutiae that are better decided by the team during sprints.
+
+This revised version is a lean, actionable specification that respects the developers' expertise while ensuring the core architectural and business goals of the MVP are met.
+
+---
+
+# **Lean TRD: Indie Game Galaxy (MVP)**
+
+## 1. Executive Summary
+
+This document outlines the core technical architecture for the Indie Game Galaxy MVP. Our goal is to rapidly validate the product's core loop: developers applying for planets and gamers exploring them.
+
+The architecture prioritizes **speed of development, low operational overhead, and a performant user experience on desktop browsers.** We will build a serverless full-stack application using Next.js for the frontend and Supabase for the backend services. The interactive map will be rendered using PixiJS for high-performance 2D graphics.
+
+## 2. Core Architecture
+
+### **Guiding Principles**
+
+*   **Simplicity First:** Choose the most direct path to implementing MVP features. Avoid premature optimization and abstraction.
+*   **Serverless & Managed Services:** Rely on Supabase for database, auth, and storage to eliminate backend infrastructure management.
+*   **Desktop-Centric:** All performance and UI targets are based on modern desktop browsers (Chrome, Safari, Firefox). Mobile support is for viewing only.
+
+### **Tech Stack (MVP)**
+
+| Category         | Technology | Justification                                                              |
+| ---------------- | ---------- | -------------------------------------------------------------------------- |
+| **Framework**    | Next.js    | Provides SSR for SEO on planet pages and a robust React ecosystem.         |
+| **Language**     | TypeScript | Ensures type safety for API and data models, crucial for maintainability. |
+| **Backend**      | Supabase   | All-in-one BaaS (Database, Auth, Storage) for rapid MVP development.       |
+| **2D Rendering** | PixiJS     | High-performance 2D WebGL renderer optimized for sprites and interaction.  |
+| **Styling**      | TailwindCSS| A utility-first CSS framework for quickly building the required UI.        |
+
+### **System Diagram**
+
+```mermaid
+graph TD
+    subgraph Browser
+        A[User: Gamer/Developer]
+    end
+
+    subgraph Vercel
+        B(Next.js Application)
+    end
+
+    subgraph Supabase
+        D[Postgres DB]
+        E[Storage: Images/GIFs]
+        F[Auth]
+    end
+
+    C(PixiJS Canvas)
+
+    A --> B
+    B -- Renders --> C
+    B -- Reads/Writes Data --> D
+    B -- Manages Files --> E
+    B -- Handles Auth --> F
+    C -- User Interaction --> B
+```
+
+### **Data Flow**
+
+1.  **Gamer (Explorer):** The Next.js app fetches all approved planet data from Supabase DB. PixiJS renders these planets on the canvas. User interactions (hover, click) are handled by PixiJS events, which trigger UI updates in React.
+2.  **Developer (Applicant):** The developer fills out a form in the Next.js app. On submission, game assets (images/GIFs) are uploaded to Supabase Storage, and the metadata is saved to the `planets` table with a `status` of `pending`.
+3.  **Admin:** The admin dashboard is a protected route in the Next.js app. It fetches `pending` planets from the database and provides simple "approve" or "reject" actions, which update the `status` field in the `planets` table.
+
+## 3. Key Technical Requirements (Non-Functional)
+
+*   **Performance:** The map must maintain **45 FPS** during navigation with up to **200** planets in the viewport.
+    *   **Mitigation:** Implement viewport culling (only rendering visible planets). Use texture atlases for planet sprites if needed.
+*   **SEO:** Individual planet pages (e.g., `/planet/[id]`) must be server-side rendered (SSR) with appropriate `<title>` and Open Graph meta tags for social sharing.
+*   **Security:**
+    *   **File Uploads:** All uploads to Supabase Storage must be validated server-side for file type (`jpeg`, `png`, `gif`) and size (< 5MB).
+    *   **Data Access:** Use Supabase Row-Level Security (RLS) policies.
+        *   Public users can only `read` approved planets.
+        *   Authenticated admins can `read` all planets and `update` their status.
+        *   Authenticated developers can `create` planets and `update` their own.
+
+## 4. Data Model (Supabase/PostgreSQL)
+
+This is the essential data structure for the MVP.
+
+**Table: `planets`**
+
+| Column          | Type      | Constraints / Notes                                         |
+| --------------- | --------- | ----------------------------------------------------------- |
+| `id`            | `uuid`    | Primary Key, auto-generated                                 |
+| `created_at`    | `timestamptz` | Auto-generated                                            |
+| `game_name`     | `text`    | Not Null                                                    |
+| `description`   | `text`    |                                                             |
+| `genre`         | `text`    |                                                             |
+| `thumbnail_url` | `text`    | URL from Supabase Storage                                   |
+| `media_urls`    | `text[]`  | Array of URLs for screenshots/GIFs                          |
+| `planet_type`   | `text`    | e.g., 'terran', 'gas_giant'. Default 'terran'.              |
+| `website_url`   | `text`    | External link to game's homepage or store page              |
+| `status`        | `text`    | `pending`, `approved`, `rejected`. Default `pending`.       |
+| `developer_id`  | `uuid`    | Foreign Key to `auth.users` table.                          |
+| `position`      | `jsonb`   | `{ "x": number, "y": number }`. Assigned on approval.       |
+
+**Note:** The `developers` are managed by the built-in Supabase `auth.users` table. We will add a simple `admin` role for the approval dashboard.

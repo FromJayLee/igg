@@ -1,0 +1,206 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+# Indie Game Galaxy Design Guide
+
+## 1. Overall Mood (전체적인 무드)
+
+Indie Game Galaxy는 **혁신적이고 미래지향적인 우주 탐험 경험**을 제공하는 서비스입니다. 깊은 우주의 어둠 속에서 네온 픽셀 아트가 빛나는 **사이버펑크와 레트로 퓨처리즘이 결합된 독특한 분위기**를 연출합니다. 
+
+핵심 디자인 철학은 **"Ultra-minimal Immersion"** - 사용자가 복잡한 UI에 방해받지 않고 순수한 탐험의 즐거움에 몰입할 수 있도록 최소한의 인터페이스로 최대한의 경험을 제공합니다. 어두운 우주 배경 위에 생동감 넘치는 네온 컬러가 대비를 이루며, 픽셀 아트 행성들이 마치 살아있는 것처럼 빛나는 **신비롭고 탐험 욕구를 자극하는 분위기**를 조성합니다.
+
+## 2. Reference Service (참조 서비스)
+
+- **Name**: Hyper Light Drifter
+- **Description**: 네온 픽셀 아트와 사이버펑크 미학이 결합된 액션 RPG 게임
+- **Design Mood**: 어두운 배경 위에 생동감 넘치는 네온 컬러가 대비를 이루는 미래지향적 픽셀 아트 스타일
+- **Primary Color**: #ff2d9d (네온 마젠타)
+- **Secondary Color**: #05d9e8 (네온 시안)
+
+## 3. Color & Gradient (색상 & 그라데이션)
+
+- **Primary Color**: #ff2d9d (네온 마젠타) - 주요 CTA 버튼 및 강조 요소
+- **Secondary Color**: #05d9e8 (네온 시안) - 호버 상태 및 글로우 효과
+- **Background Primary**: #000000 (딥 스페이스 블랙) - 메인 배경
+- **Background Secondary**: #0a093d (미드나이트 네이비) - 서브 배경 및 카드
+- **Surface Color**: #4b1d79 (코스믹 퍼플) - 큰 면적의 카드 및 패널
+- **Text Primary**: #ffffff (화이트) - 주요 텍스트
+- **Text Secondary**: #b8b8b8 (라이트 그레이) - 보조 텍스트
+
+**Mood**: 쿨톤 계열의 고대비 네온 컬러로 미래적이고 신비로운 분위기
+
+**Color Usage**: 
+- 최고 중요도: 네온 마젠타 (주요 액션 버튼, 선택 상태)
+- 높은 중요도: 네온 시안 (호버 상태, 보조 액션)
+- 중간 중요도: 코스믹 퍼플 (정보 패널, 카드 배경)
+- 기본 중요도: 미드나이트 네이비 (서브 배경)
+- 베이스: 딥 스페이스 블랙 (메인 배경)
+
+## 4. Typography & Font (타이포그래피 & 폰트)
+
+- **Heading 1**: Orbitron Bold, 32px, Weight 700 - 메인 타이틀 및 로고
+- **Heading 2**: Orbitron Medium, 24px, Weight 500 - 섹션 헤더
+- **Heading 3**: Orbitron Regular, 18px, Weight 400 - 서브 헤더
+- **Body Large**: Noto Sans KR Medium, 16px, Weight 500 - 주요 본문
+- **Body**: Noto Sans KR Regular, 14px, Weight 400 - 일반 본문
+- **Caption**: Noto Sans KR Light, 12px, Weight 300 - 보조 설명
+- **Pixel Label**: Press Start 2P Regular, 10px, Weight 400 - 픽셀 스타일 라벨
+
+**Letter Spacing**: 
+- Orbitron: 0.5px (미래적 느낌 강화)
+- Noto Sans KR: 0px (자연스러운 가독성)
+- Press Start 2P: 1px (픽셀 아트 감성)
+
+## 5. Layout & Structure (레이아웃 & 구조)
+
+**Grid System**: 
+- 데스크탑 (>1280px): 12컬럼 그리드, 24px 거터
+- 태블릿 (768-1279px): 8컬럼 그리드, 20px 거터
+- 모바일 (<768px): 4컬럼 그리드, 16px 거터
+
+**Layout Principles**:
+- **Full-Screen Immersion**: 우주 맵이 전체 화면을 차지하는 몰입형 레이아웃
+- **Minimal Navigation**: 상단에 얇은 네비게이션 바만 배치 (높이 64px)
+- **Floating Elements**: 정보 패널과 카드는 우주 배경 위에 떠있는 형태
+- **Z-Index Hierarchy**: 배경(0) → 행성(10) → 호버 카드(100) → 상세 패널(200) → 모달(300)
+
+**Spacing System**:
+- 기본 단위: 8px
+- 컴포넌트 간격: 16px, 24px, 32px
+- 섹션 간격: 48px, 64px
+- 페이지 여백: 80px (데스크탑), 40px (태블릿), 24px (모바일)
+
+## 6. Visual Style (비주얼 스타일)
+
+**아이콘 스타일**:
+- 16bit 픽셀 아트 스타일 아이콘 (16×16px, 24×24px)
+- 네온 글로우 효과 적용
+- 단순하고 기하학적인 형태
+- 2px 스트로크 두께 유지
+
+**이미지 처리**:
+- 행성 썸네일: 64×64px 픽셀 아트, 외곽 글로우 효과
+- 게임 스크린샷: 16:9 비율, 모서리 4px 라운드
+- GIF 애니메이션: 최대 2MB, 자동 재생
+
+**글로우 & 효과**:
+- 네온 글로우: `box-shadow: 0 0 20px rgba(255, 45, 157, 0.6)`
+- 호버 글로우: `box-shadow: 0 0 30px rgba(5, 217, 232, 0.8)`
+- 페이드 애니메이션: 300ms ease-in-out
+- 스케일 애니메이션: 200ms ease-out
+
+**일러스트레이션 가이드**:
+- 8-16bit 픽셀 아트 스타일 유지
+- 우주 테마: 별, 행성, 우주선, 외계 생물
+- 제한된 컬러 팔레트 사용 (최대 8색)
+- 애니메이션: 단순한 점멸, 회전 효과
+
+## 7. UX Guide (UX 가이드)
+
+**타겟 사용자 대응 전략**:
+- **초보자와 전문가 모두**: 직관적인 드래그 앤 드롭 인터랙션으로 학습 곡선 최소화
+- **인지 부하 최소화**: 복잡한 메뉴나 튜토리얼 없이 즉시 탐험 가능
+- **발견의 즐거움**: 예측 불가능한 행성 배치로 세렌디피티 경험 제공
+
+**핵심 UX 원칙**:
+
+1. **즉시 몰입 (Immediate Immersion)**
+   - 로딩 완료 즉시 인터랙션 가능
+   - 온보딩 없이 직관적 조작
+   - 3초 이내 첫 번째 행성 발견 유도
+
+2. **자연스러운 탐험 (Natural Exploration)**
+   - 마우스 드래그: 부드러운 관성 스크롤
+   - 휠 줌: 연속적이고 자연스러운 확대/축소
+   - 행성 호버: 즉각적인 미리보기 피드백
+
+3. **명확한 피드백 (Clear Feedback)**
+   - 호버 상태: 글로우 효과로 상호작용 가능성 표시
+   - 클릭 피드백: 200ms 내 시각적 반응
+   - 로딩 상태: 우주 테마 로딩 애니메이션
+
+4. **컨텍스트 유지 (Context Preservation)**
+   - 뒤로 가기 시 이전 위치 기억
+   - 브라우저 히스토리 지원
+   - 상세 패널 닫기 시 부드러운 애니메이션
+
+## 8. UI Component Guide (UI 컴포넌트 가이드)
+
+### 버튼 (Buttons)
+**Primary Button**:
+- 배경: 네온 마젠타 (#ff2d9d)
+- 텍스트: 화이트 (#ffffff)
+- 패딩: 12px 24px
+- 보더: 없음
+- 라운드: 8px
+- 호버: 네온 시안 글로우 효과
+- 폰트: Noto Sans KR Medium 14px
+
+**Secondary Button**:
+- 배경: 투명
+- 텍스트: 네온 시안 (#05d9e8)
+- 보더: 1px solid #05d9e8
+- 호버: 배경 네온 시안 10% opacity
+
+**Ghost Button**:
+- 배경: 투명
+- 텍스트: 화이트 (#ffffff)
+- 호버: 네온 마젠타 20% opacity 배경
+
+### 입력 필드 (Input Fields)
+- 배경: 미드나이트 네이비 (#0a093d)
+- 보더: 1px solid #4b1d79
+- 포커스: 네온 시안 보더 + 글로우
+- 패딁: 12px 16px
+- 라운드: 6px
+- 플레이스홀더: 라이트 그레이 (#b8b8b8)
+
+### 카드 (Cards)
+**호버 미리보기 카드**:
+- 배경: 코스믹 퍼플 (#4b1d79) 80% opacity
+- 백드롭 블러: 10px
+- 보더: 1px solid rgba(255, 255, 255, 0.1)
+- 라운드: 12px
+- 패딩: 16px
+- 그림자: 0 8px 32px rgba(0, 0, 0, 0.5)
+
+**상세 정보 패널**:
+- 배경: 미드나이트 네이비 (#0a093d) 95% opacity
+- 크기: 400px × 600px (데스크탑)
+- 애니메이션: 우측에서 슬라이드 인
+- 닫기 버튼: 우상단 × 버튼
+
+### 네비게이션 (Navigation)
+**상단 네비게이션 바**:
+- 높이: 64px
+- 배경: 딥 스페이스 블랙 (#000000) 90% opacity
+- 백드롭 블러: 20px
+- 로고: 좌측 정렬, Orbitron Bold
+- CTA 버튼: 우측 정렬, Primary Button 스타일
+
+### 토스트 알림 (Toast Notifications)
+- 배경: 코스믹 퍼플 (#4b1d79)
+- 위치: 우상단
+- 애니메이션: 위에서 슬라이드 다운
+- 지속시간: 4초
+- 아이콘: 16×16px 픽셀 아트
+
+### 로딩 상태 (Loading States)
+- 스피너: 회전하는 픽셀 아트 행성
+- 배경: 반투명 오버레이
+- 텍스트: "우주를 탐험하는 중..." (Noto Sans KR)
+- 애니메이션: 2초 주기 회전
+
+### 폼 컴포넌트 (Form Components)
+**파일 업로드**:
+- 드래그 앤 드롭 영역: 점선 보더
+- 호버: 네온 시안 보더
+- 업로드 완료: 네온 마젠타 체크 아이콘
+- 진행률: 네온 그라데이션 프로그레스 바
+
+**선택 옵션 (행성 유형)**:
+- 64×64px 픽셀 아트 미리보기
+- 선택 상태: 네온 마젠타 글로우
+- 그리드 레이아웃: 3×2 (데스크탑)
