@@ -150,17 +150,7 @@ export function UniverseMap({ className = '' }: UniverseMapProps) {
         </div>
       )}
 
-      {/* 제목 오버레이 */}
-      <div className="absolute top-4 right-4 z-10">
-        <div className="bg-universe-surface/80 backdrop-blur-md rounded-xl p-4 border border-white/10 shadow-2xl">
-          <h1 className="text-2xl font-orbitron font-bold text-universe-text-primary animate-neon-glow">
-            Indie Game Galaxy
-          </h1>
-          <p className="text-sm text-universe-text-secondary font-pixel mt-1">
-            우주를 탐험하며 게임을 발견하세요
-          </p>
-        </div>
-      </div>
+
     </div>
   );
 }
