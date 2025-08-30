@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { PLANET_TYPES, PlanetType } from '@/types/adoption';
+import { PlanetPixelArt } from '@/components/ui/PlanetPixelArt';
 import { cn } from '@/lib/utils';
 
 interface PlanetTypeSelectorProps {
@@ -74,19 +75,18 @@ export function PlanetTypeSelector({ selectedType, onSelect, error }: PlanetType
                 )}
                 
                 <div className="relative z-10 text-center">
-                  {/* 행성 이미지 */}
-                  <div className="relative w-16 h-16 mx-auto mb-3">
-                    <img
-                      src={PLANET_IMAGES[type]}
-                      alt={`${PLANET_NAMES[type]} 행성`}
-                      className={cn(
-                        "w-full h-full object-cover rounded-full border-2 transition-all duration-300",
-                        isSelected
-                          ? "border-universe-primary shadow-lg shadow-universe-primary/50"
-                          : "border-universe-surface/50 group-hover:border-universe-secondary"
-                      )}
-                      style={{ imageRendering: 'pixelated' }}
-                    />
+                                  {/* 행성 이미지 */}
+                <div className="relative w-16 h-16 mx-auto mb-3">
+                  <PlanetPixelArt
+                    planetType={type}
+                    size={64}
+                    className={cn(
+                      "w-full h-full rounded-full border-2 transition-all duration-300",
+                      isSelected
+                        ? "border-universe-primary shadow-lg shadow-universe-primary/50"
+                        : "border-universe-surface/50 group-hover:border-universe-secondary"
+                    )}
+                  />
                     
                     {/* 선택 상태 체크마크 */}
                     {isSelected && (
