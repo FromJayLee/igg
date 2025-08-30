@@ -29,7 +29,7 @@ export default function Home() {
               </div>
             </div>
             <Link href="/adopt-planet">
-              <Button className="bg-universe-primary hover:bg-universe-primary/90 text-white font-medium">
+              <Button data-testid="nav-apply" className="bg-universe-primary hover:bg-universe-primary/90 text-white font-medium">
                 <Rocket className="w-4 h-4 mr-2" />
                 Adopt Your Planet
               </Button>

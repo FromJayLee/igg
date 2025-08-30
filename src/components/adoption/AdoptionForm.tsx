@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 
 import { FileUpload } from './FileUpload';
 import { AdoptionFormSchema, AdoptionFormData, Genre, GENRES } from '@/types/adoption';
-import { Rocket, Loader2 } from 'lucide-react';
+import { Rocket, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
 import { generatePlanetThumbnail, renderPlanetCanvas } from '@/lib/planet-generator';
 
 interface AdoptionFormProps {
@@ -24,8 +24,11 @@ export function AdoptionForm({ className = '' }: AdoptionFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [screenshotFiles, setScreenshotFiles] = useState<File[]>([]);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
 
   const [planetPreviewCanvas, setPlanetPreviewCanvas] = useState<HTMLCanvasElement | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
 
   const {
     register,
@@ -33,6 +36,7 @@ export function AdoptionForm({ className = '' }: AdoptionFormProps) {
     formState: { errors, isValid },
     setValue,
     watch,
+    trigger,
   } = useForm<AdoptionFormData>({
     resolver: zodResolver(AdoptionFormSchema),
     mode: 'onChange',
@@ -50,63 +54,97 @@ export function AdoptionForm({ className = '' }: AdoptionFormProps) {
   const watchedValues = watch();
   const { gameName, genre, description } = watchedValues;
 
+  // 행성 미리보기 생성 (디바운스 적용)
+  const generatePreview = useCallback(async () => {
+    if (!gameName?.trim() || !genre || !description?.trim()) {
+      setPlanetPreviewCanvas(null);
+      return;
+    }
 
-
-  // 행성 미리보기 생성
-  const generatePreview = useCallback(() => {
-    if (!gameName || !genre || !description) return;
-
+    setPreviewLoading(true);
+    
     try {
-      const canvas = renderPlanetCanvas({
-        name: gameName,
+      const canvas = await renderPlanetCanvas({
+        name: gameName.trim(),
         genre: genre,
-        description: description,
+        description: description.trim(),
         size: 200
       });
       setPlanetPreviewCanvas(canvas);
     } catch (error) {
       console.error('행성 미리보기 생성 실패:', error);
+      setPlanetPreviewCanvas(null);
+    } finally {
+      setPreviewLoading(false);
     }
   }, [gameName, genre, description]);
 
-  // 폼 값 변경 시 미리보기 자동 생성
-  React.useEffect(() => {
-    if (gameName && genre && description) {
+  // 폼 값 변경 시 미리보기 자동 생성 (디바운스)
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
       generatePreview();
-    }
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
   }, [gameName, genre, description, generatePreview]);
+
+  // 에러 메시지 초기화
+  useEffect(() => {
+    if (submitError) {
+      const timer = setTimeout(() => setSubmitError(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [submitError]);
 
   // 폼 제출 핸들러
   const onSubmit = async (data: AdoptionFormData) => {
+    // 폼 검증 재실행
+    const isValid = await trigger();
+    if (!isValid) {
+      return;
+    }
+
     if (screenshotFiles.length === 0) {
-      alert('스크린샷을 최소 1개 이상 업로드해주세요.');
+      setSubmitError('스크린샷을 최소 1개 이상 업로드해주세요.');
       return;
     }
 
     setIsSubmitting(true);
     setUploadProgress(0);
+    setSubmitError(null);
+    setSubmitSuccess(false);
 
     try {
+      // 진행률 시뮬레이션 (실제 업로드 진행률과 연동 필요)
+      const progressInterval = setInterval(() => {
+        setUploadProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return 90;
+          }
+          return prev + 10;
+        });
+      }, 200);
+
       // 절차적 행성 썸네일 생성
       const thumbnailBlob = await generatePlanetThumbnail({
-        name: data.gameName,
+        name: data.gameName.trim(),
         genre: data.genre,
-        description: data.description,
+        description: data.description.trim(),
         size: 128
       });
 
       // FormData 생성
       const formData = new FormData();
-      formData.append('gameName', data.gameName);
-      formData.append('description', data.description);
+      formData.append('gameName', data.gameName.trim());
+      formData.append('description', data.description.trim());
       formData.append('genre', data.genre);
-      formData.append('tagline', data.tagline);
-      formData.append('downloadUrl', data.downloadUrl);
-      if (data.homepageUrl) {
-        formData.append('homepageUrl', data.homepageUrl);
+      formData.append('tagline', data.tagline.trim());
+      formData.append('downloadUrl', data.downloadUrl.trim());
+      if (data.homepageUrl?.trim()) {
+        formData.append('homepageUrl', data.homepageUrl.trim());
       }
 
-      
       // 썸네일 추가
       formData.append('thumbnail', thumbnailBlob, 'planet.png');
       
@@ -121,29 +159,65 @@ export function AdoptionForm({ className = '' }: AdoptionFormProps) {
         body: formData,
       });
 
+      clearInterval(progressInterval);
+      setUploadProgress(100);
+
       if (!response.ok) {
-        throw new Error('제출에 실패했습니다.');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `제출에 실패했습니다. (${response.status})`);
       }
 
       const result = await response.json();
       
       if (result.success) {
-        // 성공 시 성공 페이지로 이동
-        router.push('/submission-success');
+        setSubmitSuccess(true);
+        // 성공 시 2초 후 성공 페이지로 이동
+        setTimeout(() => {
+          router.push('/submission-success');
+        }, 2000);
       } else {
         throw new Error(result.error || '알 수 없는 오류가 발생했습니다.');
       }
     } catch (error) {
       console.error('제출 오류:', error);
-      alert(`제출에 실패했습니다: ${error instanceof Error ? error.message : '알 수 없는 오류'}`);
+      setSubmitError(error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.');
     } finally {
       setIsSubmitting(false);
       setUploadProgress(0);
     }
   };
 
+  // 에러 메시지 렌더링 헬퍼
+  const renderFieldError = (error: any) => {
+    if (!error) return null;
+    
+    return (
+      <div className="flex items-center gap-2 text-red-400 text-sm mt-1">
+        <AlertCircle className="w-4 h-4" />
+        <span>{error.message}</span>
+      </div>
+    );
+  };
+
   return (
     <form onSubmit={handleSubmit(onSubmit)} className={`space-y-8 ${className}`}>
+      {/* 성공/에러 메시지 */}
+      {submitSuccess && (
+        <div className="flex items-center gap-3 p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
+          <CheckCircle className="w-5 h-5 text-green-400" />
+          <span className="text-green-400 font-medium">
+            행성 분양 신청이 성공적으로 제출되었습니다! 잠시 후 성공 페이지로 이동합니다.
+          </span>
+        </div>
+      )}
+
+      {submitError && (
+        <div className="flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
+          <AlertCircle className="w-5 h-5 text-red-400" />
+          <span className="text-red-400 font-medium">{submitError}</span>
+        </div>
+      )}
+
       {/* 기본 게임 정보 */}
       <div className="space-y-6">
         <div className="flex items-center gap-3">
@@ -153,7 +227,7 @@ export function AdoptionForm({ className = '' }: AdoptionFormProps) {
           </h3>
         </div>
         
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* 게임명 */}
           <div className="space-y-2">
             <Label htmlFor="gameName" className="text-universe-text-primary">
@@ -161,13 +235,14 @@ export function AdoptionForm({ className = '' }: AdoptionFormProps) {
             </Label>
             <Input
               id="gameName"
+              data-testid="apply-form-name"
               {...register('gameName')}
               placeholder="게임 이름을 입력하세요"
-              className="bg-universe-surface/50 border-universe-surface/30 text-universe-text-primary placeholder:text-universe-text-secondary/50"
+              className={`bg-universe-surface/50 border-universe-surface/30 text-universe-text-primary placeholder:text-universe-text-secondary/50 ${
+                errors.gameName ? 'border-red-400 focus:border-red-400' : ''
+              }`}
             />
-            {errors.gameName && (
-              <p className="text-red-400 text-sm">{errors.gameName.message}</p>
-            )}
+            {renderFieldError(errors.gameName)}
           </div>
 
           {/* 장르 */}
@@ -179,7 +254,12 @@ export function AdoptionForm({ className = '' }: AdoptionFormProps) {
               value={watchedValues.genre}
               onValueChange={(value) => setValue('genre', value as Genre)}
             >
-              <SelectTrigger className="bg-universe-surface/50 border-universe-surface/30 text-universe-text-primary">
+              <SelectTrigger 
+                data-testid="apply-form-genre" 
+                className={`bg-universe-surface/50 border-universe-surface/30 text-universe-text-primary ${
+                  errors.genre ? 'border-red-400 focus:border-red-400' : ''
+                }`}
+              >
                 <SelectValue placeholder="장르를 선택하세요" />
               </SelectTrigger>
               <SelectContent className="bg-universe-surface border-universe-surface/30">
@@ -190,9 +270,7 @@ export function AdoptionForm({ className = '' }: AdoptionFormProps) {
                 ))}
               </SelectContent>
             </Select>
-            {errors.genre && (
-              <p className="text-red-400 text-sm">{errors.genre.message}</p>
-            )}
+            {renderFieldError(errors.genre)}
           </div>
 
           {/* 태그라인 */}
@@ -202,13 +280,14 @@ export function AdoptionForm({ className = '' }: AdoptionFormProps) {
             </Label>
             <Input
               id="tagline"
+              data-testid="apply-form-tagline"
               {...register('tagline')}
               placeholder="게임을 한 줄로 설명하세요"
-              className="bg-universe-surface/50 border-universe-surface/30 text-universe-text-primary placeholder:text-universe-text-secondary/50"
+              className={`bg-universe-surface/50 border-universe-surface/30 text-universe-text-primary placeholder:text-universe-text-secondary/50 ${
+                errors.tagline ? 'border-red-400 focus:border-red-400' : ''
+              }`}
             />
-            {errors.tagline && (
-              <p className="text-red-400 text-sm">{errors.tagline.message}</p>
-            )}
+            {renderFieldError(errors.tagline)}
           </div>
         </div>
 
@@ -219,14 +298,15 @@ export function AdoptionForm({ className = '' }: AdoptionFormProps) {
           </Label>
           <Textarea
             id="description"
+            data-testid="apply-form-desc"
             {...register('description')}
             placeholder="게임에 대해 자세히 설명해주세요"
             rows={4}
-            className="bg-universe-surface/50 border-universe-surface/30 text-universe-text-primary placeholder:text-universe-text-secondary/50"
+            className={`bg-universe-surface/50 border-universe-surface/30 text-universe-text-primary placeholder:text-universe-text-secondary/50 ${
+              errors.description ? 'border-red-400 focus:border-red-400' : ''
+            }`}
           />
-          {errors.description && (
-            <p className="text-red-400 text-sm">{errors.description.message}</p>
-          )}
+          {renderFieldError(errors.description)}
         </div>
 
         {/* 외부 링크 */}
@@ -237,13 +317,14 @@ export function AdoptionForm({ className = '' }: AdoptionFormProps) {
             </Label>
             <Input
               id="downloadUrl"
+              data-testid="apply-form-download-url"
               {...register('downloadUrl')}
               placeholder="Steam, App Store 등 링크"
-              className="bg-universe-surface/50 border-universe-surface/30 text-universe-text-primary placeholder:text-universe-text-secondary/50"
+              className={`bg-universe-surface/50 border-universe-surface/30 text-universe-text-primary placeholder:text-universe-text-secondary/50 ${
+                errors.downloadUrl ? 'border-red-400 focus:border-red-400' : ''
+              }`}
             />
-            {errors.downloadUrl && (
-              <p className="text-red-400 text-sm">{errors.downloadUrl.message}</p>
-            )}
+            {renderFieldError(errors.downloadUrl)}
           </div>
 
           <div className="space-y-2">
@@ -252,13 +333,12 @@ export function AdoptionForm({ className = '' }: AdoptionFormProps) {
             </Label>
             <Input
               id="homepageUrl"
+              data-testid="apply-form-homepage-url"
               {...register('homepageUrl')}
               placeholder="게임 공식 웹사이트"
-              className="bg-universe-text-secondary/50"
+              className="bg-universe-surface/50 border-universe-surface/30 text-universe-text-primary placeholder:text-universe-text-secondary/50"
             />
-            {errors.homepageUrl && (
-              <p className="text-red-400 text-sm">{errors.homepageUrl.message}</p>
-            )}
+            {renderFieldError(errors.homepageUrl)}
           </div>
         </div>
       </div>
@@ -278,6 +358,7 @@ export function AdoptionForm({ className = '' }: AdoptionFormProps) {
           </p>
           
           <FileUpload
+            data-testid="apply-form-screenshots"
             files={screenshotFiles}
             onFilesChange={setScreenshotFiles}
             maxFiles={5}
@@ -286,6 +367,12 @@ export function AdoptionForm({ className = '' }: AdoptionFormProps) {
             label="스크린샷 업로드"
             required={true}
           />
+          
+          {screenshotFiles.length === 0 && (
+            <p className="text-sm text-red-400">
+              스크린샷을 최소 1개 이상 업로드해주세요.
+            </p>
+          )}
         </div>
       </div>
 
@@ -300,8 +387,21 @@ export function AdoptionForm({ className = '' }: AdoptionFormProps) {
         
         <div className="flex justify-center">
           <div className="relative">
-            {planetPreviewCanvas ? (
+            {previewLoading ? (
               <div 
+                className="border-2 border-universe-surface/30 rounded-lg bg-universe-surface/20 flex items-center justify-center"
+                style={{ width: 200, height: 200 }}
+              >
+                <div className="flex flex-col items-center gap-2">
+                  <Loader2 className="w-6 h-6 animate-spin text-universe-primary" />
+                  <div className="text-universe-text-secondary text-sm text-center">
+                    행성 생성 중...
+                  </div>
+                </div>
+              </div>
+            ) : planetPreviewCanvas ? (
+              <div 
+                data-testid="thumbnail-preview"
                 className="border-2 border-universe-surface/30 rounded-lg overflow-hidden"
                 style={{ width: 200, height: 200 }}
               >
@@ -359,8 +459,9 @@ export function AdoptionForm({ className = '' }: AdoptionFormProps) {
       <div className="pt-6">
         <Button
           type="submit"
+          data-testid="apply-submit"
           disabled={!isValid || isSubmitting || screenshotFiles.length === 0}
-          className="w-full bg-universe-primary hover:bg-universe-primary/90 text-white font-medium py-4 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full bg-universe-primary hover:bg-universe-primary/90 text-white font-medium py-4 text-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
           size="lg"
         >
           {isSubmitting ? (
@@ -375,6 +476,12 @@ export function AdoptionForm({ className = '' }: AdoptionFormProps) {
             </>
           )}
         </Button>
+        
+        {!isValid && (
+          <p className="text-sm text-universe-text-secondary text-center mt-3">
+            모든 필수 항목을 올바르게 입력해주세요.
+          </p>
+        )}
       </div>
     </form>
   );

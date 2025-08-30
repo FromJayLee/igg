@@ -13,7 +13,7 @@ export default function SubmissionSuccessPage() {
     <div className="min-h-screen bg-universe-background flex items-center justify-center p-4">
       <div className="max-w-2xl w-full">
         {/* 성공 카드 */}
-        <div className="bg-universe-surface/90 backdrop-blur-xl rounded-2xl p-12 border border-white/20 shadow-2xl text-center">
+        <div data-testid="apply-success" className="bg-universe-surface/90 backdrop-blur-xl rounded-2xl p-12 border border-white/20 shadow-2xl text-center">
           {/* 성공 아이콘 */}
           <div className="w-24 h-24 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-8">
             <CheckCircle className="w-12 h-12 text-green-400" />

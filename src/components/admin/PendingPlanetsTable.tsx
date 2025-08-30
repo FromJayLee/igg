@@ -193,6 +193,7 @@ export function PendingPlanetsTable({
 
                   <div className="flex gap-2">
                     <Button
+                      data-testid="admin-approve-button"
                       onClick={() => handleStatusUpdate(planet.id, 'approved')}
                       disabled={isUpdating || updateStatus.isPending}
                       className="flex-1 bg-green-600 hover:bg-green-700 text-white"

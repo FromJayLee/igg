@@ -61,6 +61,18 @@ npm run build
 
 # 프로덕션 서버 실행
 npm start
+
+# E2E 테스트 실행
+npm run test:e2e
+
+# E2E 테스트 UI 모드
+npm run test:e2e:ui
+
+# E2E 테스트 헤디드 모드 (브라우저 표시)
+npm run test:e2e:headed
+
+# E2E 테스트 디버그 모드
+npm run test:e2e:debug
 ```
 
 브라우저에서 [http://localhost:3000](http://localhost:3000)을 열어 우주 맵을 확인하세요.
@@ -103,6 +115,37 @@ src/
 
 ### 컴포넌트 추가
 새로운 우주 맵 기능을 추가할 때는 `src/components/universe/` 디렉토리에 배치하세요.
+
+### E2E 테스트
+Playwright를 사용한 End-to-End 테스트가 구현되어 있습니다.
+
+#### 테스트 구조
+```
+tests/
+├── e2e/
+│   ├── planet-adoption.spec.ts    # 행성 분양 전체 플로우 테스트
+│   └── helpers.ts                 # 테스트 헬퍼 함수
+└── fixtures/
+    └── images/                    # 테스트용 이미지 파일들
+```
+
+#### 주요 테스트 시나리오
+- **Happy Path**: 행성 분양 신청 → 썸네일 생성 → 관리자 승인 → 맵 반영
+- **이미지 검증**: 다양한 포맷/비율/용량 이미지 업로드 테스트
+- **실패 처리**: 네트워크 오류, 업로드 실패 시나리오
+- **크로스 브라우저**: Chromium, Firefox, WebKit 호환성
+
+#### 테스트 실행
+```bash
+# 모든 브라우저에서 테스트 실행
+npm run test:e2e
+
+# 특정 브라우저에서만 실행
+npx playwright test --project=chromium
+
+# 테스트 결과 보고서 생성
+npx playwright show-report
+```
 
 ### 성능 최적화
 - 뷰포트 컬링으로 불필요한 렌더링 방지
