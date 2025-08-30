@@ -18,12 +18,14 @@ export default function Home() {
                 Indie Game Galaxy
               </div>
               <div className="hidden md:block">
-                <p className="text-sm text-universe-text-secondary font-medium">
-                  우주를 탐험하여 게임을 발견하세요
-                </p>
-                <p className="text-xs text-universe-text-secondary/70">
-                  독특한 인디게임들을 우주 맵에서 찾아보세요
-                </p>
+                <div className="bg-universe-surface/80 backdrop-blur-md rounded-xl p-3 border border-universe-surface/30 shadow-lg">
+                  <p className="text-sm text-universe-text-secondary font-medium">
+                    우주를 탐험하여 게임을 발견하세요
+                  </p>
+                  <p className="text-xs text-universe-text-secondary/70 mt-1">
+                    독특한 인디게임들을 우주 맵에서 찾아보세요
+                  </p>
+                </div>
               </div>
             </div>
             <Link href="/adopt-planet">
