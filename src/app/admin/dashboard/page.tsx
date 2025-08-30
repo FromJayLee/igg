@@ -1,4 +1,6 @@
 import { AdminDashboard } from '@/components/admin/AdminDashboard';
+import { AdminRouteGuard } from '@/components/admin/AdminRouteGuard';
+import { AdminHeader } from '@/components/admin/AdminHeader';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -8,8 +10,11 @@ export const metadata: Metadata = {
 
 export default function AdminDashboardPage() {
   return (
-    <div className="min-h-screen bg-universe-background">
-      <AdminDashboard />
-    </div>
+    <AdminRouteGuard>
+      <div className="min-h-screen bg-universe-background">
+        <AdminHeader />
+        <AdminDashboard />
+      </div>
+    </AdminRouteGuard>
   );
 }
