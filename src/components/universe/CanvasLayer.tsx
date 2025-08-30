@@ -38,10 +38,10 @@ export function CanvasLayer({
 
   // PixiJS 애플리케이션 초기화 (PixiJS v8 방식)
   const initializePixiApp = useCallback(async () => {
-    if (!canvasRef.current) return;
+    if (!canvasRef.current || appRef.current) return; // 재생성 금지
 
     let app: PIXI.Application | null = null;
-    let mounted = true;
+    let disposed = false;
 
     try {
       // PixiJS v8에서는 Application 생성 후 init 호출
@@ -55,9 +55,10 @@ export function CanvasLayer({
         resolution: window.devicePixelRatio || 1,
         autoDensity: true,
         powerPreference: 'high-performance',
+        resizeTo: window, // 안정적인 리사이즈 대상
       });
 
-      if (!mounted) {
+      if (disposed) {
         app.destroy(true);
         return;
       }
@@ -83,18 +84,15 @@ export function CanvasLayer({
       onAppReady(app);
     } catch (error) {
       console.error('PixiJS 초기화 실패:', error);
-      if (app && mounted) {
-        app.destroy(true);
+      if (app && !disposed) {
+        try {
+          app.destroy(true);
+        } catch (e) {
+          console.warn('PixiJS 앱 정리 중 오류:', e);
+        }
       }
     }
-
-    return () => {
-      mounted = false;
-      if (app) {
-        app.destroy(true);
-      }
-    };
-  }, [width, height]);
+  }, [width, height, onAppReady]);
 
   // 별 필드 생성
   const createStarField = useCallback(() => {
@@ -304,21 +302,33 @@ export function CanvasLayer({
 
   // 컴포넌트 마운트 시 초기화
   useEffect(() => {
-    let cleanup: (() => void) | undefined;
+    let disposed = false;
 
     const init = async () => {
-      cleanup = await initializePixiApp();
+      if (disposed) return;
+      await initializePixiApp();
     };
 
     init();
 
     return () => {
-      if (cleanup) cleanup();
+      disposed = true;
+      
+      // 애니메이션 프레임 정리
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
       }
-      if (appRef.current) {
-        appRef.current.destroy(true);
+      
+      // PixiJS 앱 정리
+      const app = appRef.current;
+      if (app) {
+        appRef.current = null; // 참조 끊기
+        try {
+          app.destroy(true);
+        } catch (e) {
+          console.warn('PixiJS 앱 정리 중 오류:', e);
+        }
       }
     };
   }, [initializePixiApp]);
