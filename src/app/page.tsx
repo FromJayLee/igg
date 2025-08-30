@@ -13,8 +13,18 @@ export default function Home() {
         {/* 네비게이션 바 */}
         <div className="absolute top-0 left-0 right-0 z-50 bg-black/90 backdrop-blur-xl border-b border-white/10">
           <div className="flex items-center justify-between px-6 py-4">
-            <div className="text-2xl font-orbitron font-bold text-universe-text-primary">
-              Indie Game Galaxy
+            <div className="flex items-center gap-6">
+              <div className="text-2xl font-orbitron font-bold text-universe-text-primary">
+                Indie Game Galaxy
+              </div>
+              <div className="hidden md:block">
+                <p className="text-sm text-universe-text-secondary font-medium">
+                  우주를 탐험하여 게임을 발견하세요
+                </p>
+                <p className="text-xs text-universe-text-secondary/70">
+                  독특한 인디게임들을 우주 맵에서 찾아보세요
+                </p>
+              </div>
             </div>
             <Link href="/adopt-planet">
               <Button className="bg-universe-primary hover:bg-universe-primary/90 text-white font-medium">
