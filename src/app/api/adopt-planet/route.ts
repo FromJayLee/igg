@@ -16,6 +16,7 @@ export async function POST(request: NextRequest) {
       downloadUrl: String(formData.get('downloadUrl') || ''),
       homepageUrl: String(formData.get('homepageUrl') || ''),
       planetType: String(formData.get('planetType') || ''),
+      customization: formData.get('customization') ? JSON.parse(String(formData.get('customization'))) : null,
     };
 
     // Zod 스키마로 검증
@@ -155,24 +156,31 @@ export async function POST(request: NextRequest) {
         screenshotUrls.push(screenshotUrlData.publicUrl);
       }
 
-      // 3. 데이터베이스에 행성 정보 저장
+      // 3. 데이터베이스에 행성 정보 저장 (커스터마이제이션 포함)
+      const planetDataToInsert: any = {
+        id: planetId,
+        game_name: validatedData.gameName,
+        description: validatedData.description,
+        genre: validatedData.genre,
+        tagline: validatedData.tagline,
+        download_url: validatedData.downloadUrl,
+        homepage_url: validatedData.homepageUrl || null,
+        planet_type: validatedData.planetType,
+        thumbnail_url: thumbnailUrl,
+        screenshot_urls: screenshotUrls,
+        status: 'pending',
+        created_at: timestamp,
+        updated_at: timestamp,
+      };
+
+      // 커스터마이제이션 데이터가 있으면 추가
+      if (validatedData.customization) {
+        planetDataToInsert.customization = validatedData.customization;
+      }
+
       const { data: planetData, error: planetError } = await supabase
         .from('planets')
-        .insert({
-          id: planetId,
-          game_name: validatedData.gameName,
-          description: validatedData.description,
-          genre: validatedData.genre,
-          tagline: validatedData.tagline,
-          download_url: validatedData.downloadUrl,
-          homepage_url: validatedData.homepageUrl || null,
-          planet_type: validatedData.planetType,
-          thumbnail_url: thumbnailUrl,
-          screenshot_urls: screenshotUrls,
-          status: 'pending',
-          created_at: timestamp,
-          updated_at: timestamp,
-        })
+        .insert(planetDataToInsert)
         .select()
         .single();
 

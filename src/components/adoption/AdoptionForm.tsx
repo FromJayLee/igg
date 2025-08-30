@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
@@ -11,8 +11,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { PlanetTypeSelector } from './PlanetTypeSelector';
 import { FileUpload } from './FileUpload';
-import { AdoptionFormSchema, AdoptionFormData, PlanetType, Genre, GENRES } from '@/types/adoption';
-import { Rocket, Loader2 } from 'lucide-react';
+import { ColorPicker } from './ColorPicker';
+import { TextureSelector } from './TextureSelector';
+import { ExteriorSelector } from './ElementSelector';
+import { InteriorSelector } from './ElementSelector';
+import { PlanetPreview } from './PlanetPreview';
+import { AdoptionFormSchema, AdoptionFormData, PlanetType, Genre, GENRES, PlanetCustomization } from '@/types/adoption';
+import { Rocket, Loader2, Palette, Sparkles } from 'lucide-react';
 
 interface AdoptionFormProps {
   className?: string;
@@ -25,6 +30,32 @@ export function AdoptionForm({ className = '' }: AdoptionFormProps) {
   const [thumbnailFile, setThumbnailFile] = useState<File[]>([]);
   const [screenshotFiles, setScreenshotFiles] = useState<File[]>([]);
   const [selectedPlanetType, setSelectedPlanetType] = useState<PlanetType | null>(null);
+
+  // 기본 커스터마이제이션 값 생성
+  const defaultCustomization = useMemo((): PlanetCustomization => ({
+    version: 1,
+    type: 'terran',
+    colors: {
+      primary: '#ff2d9d',
+      secondary: '#05d9e8',
+      preset: 'neon_magenta',
+    },
+    texture: {
+      id: 'none',
+      intensity: 0.5,
+    },
+    exterior: {
+      rings: false,
+      satellites: 0,
+    },
+    interior: {
+      water: false,
+      volcano: false,
+      land: false,
+      storm: false,
+    },
+    seed: Math.floor(Math.random() * 1000000),
+  }), []);
 
   const {
     register,
@@ -43,20 +74,68 @@ export function AdoptionForm({ className = '' }: AdoptionFormProps) {
       downloadUrl: '',
       homepageUrl: '',
       planetType: 'terran' as PlanetType,
+      customization: defaultCustomization,
     },
   });
 
   // 폼 값 감시
   const watchedValues = watch();
+  const customization = (watchedValues.customization || defaultCustomization) as PlanetCustomization;
 
   // 행성 유형 선택 핸들러
   const handlePlanetTypeSelect = (type: PlanetType) => {
     setSelectedPlanetType(type);
     setValue('planetType', type);
+    setValue('customization.type', type);
+  };
+
+  // 커스터마이제이션 업데이트 핸들러들
+  const updateCustomization = (updates: Partial<PlanetCustomization>) => {
+    const newCustomization = { ...customization, ...updates };
+    setValue('customization', newCustomization);
+  };
+
+  const handlePrimaryColorChange = (color: string) => {
+    updateCustomization({ colors: { ...customization.colors, primary: color } });
+  };
+
+  const handleSecondaryColorChange = (color: string) => {
+    updateCustomization({ 
+      colors: { 
+        primary: customization.colors.primary, 
+        secondary: color,
+        preset: customization.colors.preset
+      } 
+    });
+  };
+
+  const handleTextureChange = (texture: any) => {
+    updateCustomization({ texture });
+  };
+
+  const handleTextureIntensityChange = (intensity: number) => {
+    updateCustomization({ 
+      texture: { 
+        id: customization.texture.id, 
+        intensity 
+      } 
+    });
+  };
+
+  const handleRingsChange = (rings: boolean) => {
+    updateCustomization({ exterior: { ...customization.exterior, rings } });
+  };
+
+  const handleSatellitesChange = (satellites: number) => {
+    updateCustomization({ exterior: { ...customization.exterior, satellites } });
+  };
+
+  const handleInteriorChange = (updates: Partial<PlanetCustomization['interior']>) => {
+    updateCustomization({ interior: { ...customization.interior, ...updates } });
   };
 
   // 폼 제출 핸들러
-  const onSubmit = async (data: AdoptionFormData) => {
+  const onSubmit = async (data: any) => {
     if (thumbnailFile.length === 0) {
       alert('썸네일 이미지를 업로드해주세요.');
       return;
@@ -75,7 +154,10 @@ export function AdoptionForm({ className = '' }: AdoptionFormProps) {
       
       // 텍스트 필드 추가
       Object.entries(data).forEach(([key, value]) => {
-        if (value !== undefined && value !== '') {
+        if (key === 'customization') {
+          // 커스터마이제이션은 JSON 문자열로 변환
+          formData.append(key, JSON.stringify(value));
+        } else if (value !== undefined && value !== '' && typeof value === 'string') {
           formData.append(key, value);
         }
       });
@@ -360,17 +442,114 @@ export function AdoptionForm({ className = '' }: AdoptionFormProps) {
         />
       </div>
 
-      {/* 행성 유형 선택 */}
+      {/* 행성 커스터마이제이션 */}
       <div className="space-y-6">
-        <h3 className="text-xl font-orbitron font-medium text-universe-text-primary">
-          행성 유형
-        </h3>
+        <div className="flex items-center gap-3">
+          <Sparkles className="w-6 h-6 text-universe-primary" />
+          <h3 className="text-xl font-orbitron font-medium text-universe-text-primary">
+            행성 커스터마이제이션
+          </h3>
+        </div>
         
-        <PlanetTypeSelector
-          selectedType={selectedPlanetType}
-          onSelect={handlePlanetTypeSelect}
-          error={errors.planetType?.message}
-        />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* 커스터마이제이션 컨트롤 */}
+          <div className="space-y-6">
+            {/* 행성 유형 선택 */}
+            <div className="space-y-4">
+              <h4 className="text-lg font-medium text-universe-text-primary">
+                행성 유형
+              </h4>
+              <PlanetTypeSelector
+                selectedType={selectedPlanetType}
+                onSelect={handlePlanetTypeSelect}
+                error={errors.planetType?.message}
+              />
+            </div>
+
+            {/* 색상 선택 */}
+            <div className="space-y-4">
+              <h4 className="text-lg font-medium text-universe-text-primary flex items-center gap-2">
+                <Palette className="w-5 h-5" />
+                색상
+              </h4>
+              <div className="grid grid-cols-1 gap-4">
+                <ColorPicker
+                  label="주요 색상"
+                  value={customization.colors.primary}
+                  onChange={handlePrimaryColorChange}
+                  error={errors.customization?.colors?.primary?.message}
+                />
+                <ColorPicker
+                  label="보조 색상"
+                  value={customization.colors.secondary || '#05d9e8'}
+                  onChange={handleSecondaryColorChange}
+                  error={errors.customization?.colors?.secondary?.message}
+                />
+              </div>
+            </div>
+
+            {/* 질감 선택 */}
+            <div className="space-y-4">
+              <h4 className="text-lg font-medium text-universe-text-primary">
+                질감
+              </h4>
+              <TextureSelector
+                selectedTexture={customization.texture.id}
+                intensity={customization.texture.intensity}
+                onTextureChange={handleTextureChange}
+                onIntensityChange={handleTextureIntensityChange}
+                error={errors.customization?.texture?.id?.message}
+              />
+            </div>
+
+            {/* 외부 요소 */}
+            <div className="space-y-4">
+              <h4 className="text-lg font-medium text-universe-text-primary">
+                외부 요소
+              </h4>
+              <ExteriorSelector
+                rings={customization.exterior.rings || false}
+                satellites={customization.exterior.satellites || 0}
+                onRingsChange={handleRingsChange}
+                onSatellitesChange={handleSatellitesChange}
+              />
+            </div>
+
+            {/* 내부 요소 */}
+            <div className="space-y-4">
+              <h4 className="text-lg font-medium text-universe-text-primary">
+                내부 요소
+              </h4>
+              <InteriorSelector
+                water={customization.interior.water || false}
+                volcano={customization.interior.volcano || false}
+                land={customization.interior.land || false}
+                storm={customization.interior.storm || false}
+                onWaterChange={(value) => handleInteriorChange({ water: value })}
+                onVolcanoChange={(value) => handleInteriorChange({ volcano: value })}
+                onLandChange={(value) => handleInteriorChange({ land: value })}
+                onStormChange={(value) => handleInteriorChange({ storm: value })}
+              />
+            </div>
+          </div>
+
+          {/* 실시간 미리보기 */}
+          <div className="space-y-4">
+            <h4 className="text-lg font-medium text-universe-text-primary">
+              실시간 미리보기
+            </h4>
+            <div className="flex justify-center">
+              <PlanetPreview
+                customization={customization}
+                size={300}
+                className="border-2 border-universe-surface/30 rounded-lg p-4"
+              />
+            </div>
+            <p className="text-sm text-universe-text-secondary text-center">
+              선택한 옵션들이 실시간으로 반영됩니다
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* 진행률 표시 */}

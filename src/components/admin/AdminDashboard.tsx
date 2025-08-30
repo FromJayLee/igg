@@ -19,7 +19,7 @@ export function AdminDashboard() {
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
 
   const { 
-    planets, 
+    data: planets, 
     isLoading, 
     error, 
     refetch

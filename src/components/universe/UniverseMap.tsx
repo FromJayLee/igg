@@ -34,12 +34,28 @@ export function UniverseMap({ className = '' }: UniverseMapProps) {
     dragStartY: 0,
   });
   const [selectedPlanetId, setSelectedPlanetId] = useState<string | null>(null);
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const appRef = useRef<PIXI.Application | null>(null);
 
   // 초기 행성 생성
   useEffect(() => {
     const initialPlanets = generateRandomPlanets(UNIVERSE_CONFIG.planetCount);
     setPlanets(initialPlanets);
+  }, []);
+
+  // 클라이언트 사이드에서만 윈도우 크기 설정
+  useEffect(() => {
+    const updateDimensions = () => {
+      setDimensions({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      });
+    };
+
+    updateDimensions();
+    window.addEventListener('resize', updateDimensions);
+    
+    return () => window.removeEventListener('resize', updateDimensions);
   }, []);
 
   // 카메라 상태 업데이트
@@ -97,8 +113,8 @@ export function UniverseMap({ className = '' }: UniverseMapProps) {
     <div className={`relative w-full h-full overflow-hidden bg-universe-background ${className}`}>
       {/* 우주 맵 캔버스 */}
       <CanvasLayer
-        width={window.innerWidth}
-        height={window.innerHeight}
+        width={dimensions.width}
+        height={dimensions.height}
         planets={planets}
         camera={camera}
         interaction={interaction}

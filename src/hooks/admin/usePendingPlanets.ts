@@ -28,6 +28,30 @@ export function usePendingPlanets() {
         downloadUrl: row.download_url,
         homepageUrl: row.homepage_url,
         planetType: row.planet_type,
+        customization: row.customization || {
+          version: 1,
+          type: row.planet_type || 'terran',
+          colors: {
+            primary: '#ff2d9d',
+            secondary: '#05d9e8',
+            preset: 'neon_magenta',
+          },
+          texture: {
+            id: 'none',
+            intensity: 0.5,
+          },
+          exterior: {
+            rings: false,
+            satellites: 0,
+          },
+          interior: {
+            water: false,
+            volcano: false,
+            land: false,
+            storm: false,
+          },
+          seed: Math.floor(Math.random() * 1000000),
+        },
         thumbnailUrl: row.thumbnail_url,
         screenshotUrls: row.screenshot_urls || [],
         status: row.status,
@@ -126,6 +150,30 @@ export function usePlanetDetail(planetId: string) {
         downloadUrl: data.download_url,
         homepageUrl: data.homepage_url,
         planetType: data.planet_type,
+        customization: data.customization || {
+          version: 1,
+          type: data.planet_type || 'terran',
+          colors: {
+            primary: '#ff2d9d',
+            secondary: '#05d9e8',
+            preset: 'neon_magenta',
+          },
+          texture: {
+            id: 'none',
+            intensity: 0.5,
+          },
+          exterior: {
+            rings: false,
+            satellites: 0,
+          },
+          interior: {
+            water: false,
+            volcano: false,
+            land: false,
+            storm: false,
+          },
+          seed: Math.floor(Math.random() * 1000000),
+        },
         thumbnailUrl: data.thumbnail_url,
         screenshotUrls: data.screenshot_urls || [],
         status: data.status,

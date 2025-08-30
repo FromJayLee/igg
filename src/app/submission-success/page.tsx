@@ -55,6 +55,7 @@ export default function SubmissionSuccessPage() {
               <div className="flex items-center gap-3">
                 <div className="w-6 h-6 bg-universe-primary/20 rounded-full flex items-center justify-center">
                   <span className="text-xs font-medium text-universe-primary">3</span>
+                </div>
                 <span>우주 맵에 행성 전시 및 게이머 탐험 시작</span>
               </div>
             </div>

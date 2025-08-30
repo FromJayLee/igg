@@ -4,7 +4,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Eye, CheckCircle, XCircle, Clock, ExternalLink } from 'lucide-react';
+import { Eye, CheckCircle, XCircle, Clock, ExternalLink, Palette, Sparkles } from 'lucide-react';
 import { PlanetAdoption } from '@/types/adoption';
 import { formatDistanceToNow } from 'date-fns';
 import { ko } from 'date-fns/locale';
@@ -43,9 +43,61 @@ const getStatusIcon = (status: string) => {
   }
 };
 
+// 커스터마이제이션 정보를 간단하게 표시하는 컴포넌트
+const CustomizationInfo = ({ customization }: { customization: any }) => {
+  if (!customization || Object.keys(customization).length === 0) {
+    return (
+      <div className="text-xs text-universe-text-secondary/70">
+        기본 설정
+      </div>
+    );
+  }
+
+  const hasCustomization = customization.colors?.primary !== '#ff2d9d' ||
+    customization.texture?.id !== 'none' ||
+    customization.exterior?.rings ||
+    customization.exterior?.satellites > 0 ||
+    Object.values(customization.interior || {}).some(Boolean);
+
+  if (!hasCustomization) {
+    return (
+      <div className="text-xs text-universe-text-secondary/70">
+        기본 설정
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center gap-1 text-xs text-universe-text-secondary">
+        <Palette className="w-3 h-3" />
+        커스터마이징됨
+      </div>
+      <div className="flex flex-wrap gap-1">
+        {customization.texture?.id !== 'none' && (
+          <Badge variant="outline" className="text-xs px-1 py-0 border-universe-surface/30">
+            {customization.texture.id}
+          </Badge>
+        )}
+        {customization.exterior?.rings && (
+          <Badge variant="outline" className="text-xs px-1 py-0 border-universe-surface/30">
+            고리
+          </Badge>
+        )}
+        {customization.exterior?.satellites > 0 && (
+          <Badge variant="outline" className="text-xs px-1 py-0 border-universe-surface/30">
+            위성 {customization.exterior.satellites}개
+          </Badge>
+        )}
+      </div>
+    </div>
+  );
+};
+
 export function PendingPlanetsTable({ 
   planets, 
   isLoading, 
+  isUpdating,
   onStatusUpdate, 
   onPreview 
 }: PendingPlanetsTableProps) {
@@ -82,6 +134,7 @@ export function PendingPlanetsTable({
             <TableHead className="text-universe-text-primary font-medium">게임 정보</TableHead>
             <TableHead className="text-universe-text-primary font-medium">장르</TableHead>
             <TableHead className="text-universe-text-primary font-medium">행성 유형</TableHead>
+            <TableHead className="text-universe-text-primary font-medium">커스터마이징</TableHead>
             <TableHead className="text-universe-text-primary font-medium">상태</TableHead>
             <TableHead className="text-universe-text-primary font-medium">신청일</TableHead>
             <TableHead className="text-universe-text-primary font-medium">액션</TableHead>
@@ -155,6 +208,11 @@ export function PendingPlanetsTable({
                     {planet.planetType.replace('_', ' ')}
                   </span>
                 </div>
+              </TableCell>
+
+              {/* 커스터마이징 정보 */}
+              <TableCell>
+                <CustomizationInfo customization={planet.customization} />
               </TableCell>
 
               {/* 상태 */}

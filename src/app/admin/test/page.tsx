@@ -103,16 +103,16 @@ export default function AdminTestPage() {
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <span className="text-universe-text-secondary text-sm">액세스 토큰 만료:</span>
+                    <span className="text-universe-text-secondary text-sm">세션 만료:</span>
                     <p className="text-universe-text-primary text-sm">
-                      {new Date(session.access_token_expires_at * 1000).toLocaleString('ko-KR')}
+                      {session.expires_at ? new Date(session.expires_at).toLocaleString('ko-KR') : '정보 없음'}
                     </p>
                   </div>
                   
                   <div className="space-y-2">
-                    <span className="text-universe-text-secondary text-sm">리프레시 토큰 만료:</span>
+                    <span className="text-universe-text-secondary text-sm">토큰 타입:</span>
                     <p className="text-universe-text-primary text-sm">
-                      {new Date(session.refresh_token_expires_at * 1000).toLocaleString('ko-KR')}
+                      {session.token_type || '정보 없음'}
                     </p>
                   </div>
                   

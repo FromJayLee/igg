@@ -21,7 +21,8 @@ export function PlanetPreviewModal({
   planet, 
   isOpen, 
   onClose, 
-  onStatusUpdate 
+  onStatusUpdate,
+  isUpdating = false
 }: PlanetPreviewModalProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
