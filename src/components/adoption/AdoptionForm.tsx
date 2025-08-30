@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
@@ -9,15 +9,11 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { PlanetTypeSelector } from './PlanetTypeSelector';
+
 import { FileUpload } from './FileUpload';
-import { ColorPicker } from './ColorPicker';
-import { TextureSelector } from './TextureSelector';
-import { ExteriorSelector } from './ElementSelector';
-import { InteriorSelector } from './ElementSelector';
-import { PlanetPreview } from './PlanetPreview';
-import { AdoptionFormSchema, AdoptionFormData, PlanetType, Genre, GENRES, PlanetCustomization } from '@/types/adoption';
-import { Rocket, Loader2, Palette, Sparkles } from 'lucide-react';
+import { AdoptionFormSchema, AdoptionFormData, Genre, GENRES } from '@/types/adoption';
+import { Rocket, Loader2 } from 'lucide-react';
+import { generatePlanetThumbnail, renderPlanetCanvas } from '@/lib/planet-generator';
 
 interface AdoptionFormProps {
   className?: string;
@@ -27,35 +23,9 @@ export function AdoptionForm({ className = '' }: AdoptionFormProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [thumbnailFile, setThumbnailFile] = useState<File[]>([]);
   const [screenshotFiles, setScreenshotFiles] = useState<File[]>([]);
-  const [selectedPlanetType, setSelectedPlanetType] = useState<PlanetType | null>(null);
 
-  // 기본 커스터마이제이션 값 생성
-  const defaultCustomization = useMemo((): PlanetCustomization => ({
-    version: 1,
-    type: 'terran',
-    colors: {
-      primary: '#ff2d9d',
-      secondary: '#05d9e8',
-      preset: 'neon_magenta',
-    },
-    texture: {
-      id: 'none',
-      intensity: 0.5,
-    },
-    exterior: {
-      rings: false,
-      satellites: 0,
-    },
-    interior: {
-      water: false,
-      volcano: false,
-      land: false,
-      storm: false,
-    },
-    seed: Math.floor(Math.random() * 1000000),
-  }), []);
+  const [planetPreviewCanvas, setPlanetPreviewCanvas] = useState<HTMLCanvasElement | null>(null);
 
   const {
     register,
@@ -73,74 +43,41 @@ export function AdoptionForm({ className = '' }: AdoptionFormProps) {
       tagline: '',
       downloadUrl: '',
       homepageUrl: '',
-      planetType: 'terran' as PlanetType,
-      customization: defaultCustomization,
     },
   });
 
   // 폼 값 감시
   const watchedValues = watch();
-  const customization = (watchedValues.customization || defaultCustomization) as PlanetCustomization;
+  const { gameName, genre, description } = watchedValues;
 
-  // 행성 유형 선택 핸들러
-  const handlePlanetTypeSelect = (type: PlanetType) => {
-    setSelectedPlanetType(type);
-    setValue('planetType', type);
-    setValue('customization.type', type);
-  };
 
-  // 커스터마이제이션 업데이트 핸들러들
-  const updateCustomization = (updates: Partial<PlanetCustomization>) => {
-    const newCustomization = { ...customization, ...updates };
-    setValue('customization', newCustomization);
-  };
 
-  const handlePrimaryColorChange = (color: string) => {
-    updateCustomization({ colors: { ...customization.colors, primary: color } });
-  };
+  // 행성 미리보기 생성
+  const generatePreview = useCallback(() => {
+    if (!gameName || !genre || !description) return;
 
-  const handleSecondaryColorChange = (color: string) => {
-    updateCustomization({ 
-      colors: { 
-        primary: customization.colors.primary, 
-        secondary: color,
-        preset: customization.colors.preset
-      } 
-    });
-  };
+    try {
+      const canvas = renderPlanetCanvas({
+        name: gameName,
+        genre: genre,
+        description: description,
+        size: 200
+      });
+      setPlanetPreviewCanvas(canvas);
+    } catch (error) {
+      console.error('행성 미리보기 생성 실패:', error);
+    }
+  }, [gameName, genre, description]);
 
-  const handleTextureChange = (texture: any) => {
-    updateCustomization({ texture });
-  };
-
-  const handleTextureIntensityChange = (intensity: number) => {
-    updateCustomization({ 
-      texture: { 
-        id: customization.texture.id, 
-        intensity 
-      } 
-    });
-  };
-
-  const handleRingsChange = (rings: boolean) => {
-    updateCustomization({ exterior: { ...customization.exterior, rings } });
-  };
-
-  const handleSatellitesChange = (satellites: number) => {
-    updateCustomization({ exterior: { ...customization.exterior, satellites } });
-  };
-
-  const handleInteriorChange = (updates: Partial<PlanetCustomization['interior']>) => {
-    updateCustomization({ interior: { ...customization.interior, ...updates } });
-  };
+  // 폼 값 변경 시 미리보기 자동 생성
+  React.useEffect(() => {
+    if (gameName && genre && description) {
+      generatePreview();
+    }
+  }, [gameName, genre, description, generatePreview]);
 
   // 폼 제출 핸들러
-  const onSubmit = async (data: any) => {
-    if (thumbnailFile.length === 0) {
-      alert('썸네일 이미지를 업로드해주세요.');
-      return;
-    }
-
+  const onSubmit = async (data: AdoptionFormData) => {
     if (screenshotFiles.length === 0) {
       alert('스크린샷을 최소 1개 이상 업로드해주세요.');
       return;
@@ -150,174 +87,129 @@ export function AdoptionForm({ className = '' }: AdoptionFormProps) {
     setUploadProgress(0);
 
     try {
+      // 절차적 행성 썸네일 생성
+      const thumbnailBlob = await generatePlanetThumbnail({
+        name: data.gameName,
+        genre: data.genre,
+        description: data.description,
+        size: 128
+      });
+
+      // FormData 생성
       const formData = new FormData();
+      formData.append('gameName', data.gameName);
+      formData.append('description', data.description);
+      formData.append('genre', data.genre);
+      formData.append('tagline', data.tagline);
+      formData.append('downloadUrl', data.downloadUrl);
+      if (data.homepageUrl) {
+        formData.append('homepageUrl', data.homepageUrl);
+      }
+
       
-      // 텍스트 필드 추가
-      Object.entries(data).forEach(([key, value]) => {
-        if (key === 'customization') {
-          // 커스터마이제이션은 JSON 문자열로 변환
-          formData.append(key, JSON.stringify(value));
-        } else if (value !== undefined && value !== '' && typeof value === 'string') {
-          formData.append(key, value);
-        }
-      });
-
-      // 파일 추가
-      formData.append('thumbnail', thumbnailFile[0]);
+      // 썸네일 추가
+      formData.append('thumbnail', thumbnailBlob, 'planet.png');
+      
+      // 스크린샷 추가
       screenshotFiles.forEach((file, index) => {
-        formData.append(`screenshot_${index}`, file);
+        formData.append('screenshots', file);
       });
 
-      // XHR을 사용한 진행률 표시 업로드
-      const response = await submitWithProgress(formData, (progress) => {
-        setUploadProgress(progress);
+      // API 호출
+      const response = await fetch('/api/adopt-planet', {
+        method: 'POST',
+        body: formData,
       });
 
-      if (response.success) {
-        // 성공 시 입력값 리셋
-        setThumbnailFile([]);
-        setScreenshotFiles([]);
-        setSelectedPlanetType(null);
-        
-        // 성공 페이지로 이동
+      if (!response.ok) {
+        throw new Error('제출에 실패했습니다.');
+      }
+
+      const result = await response.json();
+      
+      if (result.success) {
+        // 성공 시 성공 페이지로 이동
         router.push('/submission-success');
       } else {
-        alert('제출에 실패했습니다: ' + response.error);
+        throw new Error(result.error || '알 수 없는 오류가 발생했습니다.');
       }
     } catch (error) {
-      console.error('폼 제출 오류:', error);
-      alert('제출 중 오류가 발생했습니다. 다시 시도해주세요.');
+      console.error('제출 오류:', error);
+      alert(`제출에 실패했습니다: ${error instanceof Error ? error.message : '알 수 없는 오류'}`);
     } finally {
       setIsSubmitting(false);
       setUploadProgress(0);
     }
   };
 
-  // 진행률 표시와 함께 폼 제출
-  const submitWithProgress = (formData: FormData, onProgress: (progress: number) => void): Promise<any> => {
-    return new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', '/api/adopt-planet');
-      
-      xhr.upload.onprogress = (e) => {
-        if (e.lengthComputable) {
-          const progress = Math.round((e.loaded / e.total) * 100);
-          onProgress(progress);
-        }
-      };
-
-      xhr.onreadystatechange = () => {
-        if (xhr.readyState === 4) {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            try {
-              const response = JSON.parse(xhr.responseText);
-              resolve(response);
-            } catch (error) {
-              resolve({ success: true });
-            }
-          } else {
-            try {
-              const errorResponse = JSON.parse(xhr.responseText);
-              reject(new Error(errorResponse.error || 'Upload failed'));
-            } catch (error) {
-              reject(new Error('Upload failed'));
-            }
-          }
-        }
-      };
-
-      xhr.onerror = () => reject(new Error('Network error'));
-      xhr.send(formData);
-    });
-  };
-
   return (
     <form onSubmit={handleSubmit(onSubmit)} className={`space-y-8 ${className}`}>
-      {/* 게임 기본 정보 */}
+      {/* 기본 게임 정보 */}
       <div className="space-y-6">
-        <h3 className="text-xl font-orbitron font-medium text-universe-text-primary">
-          게임 기본 정보
-        </h3>
+        <div className="flex items-center gap-3">
+          <Rocket className="w-6 h-6 text-universe-primary" />
+          <h3 className="text-xl font-orbitron font-medium text-universe-text-primary">
+            게임 정보
+          </h3>
+        </div>
         
-        {/* 게임명 */}
-        <div className="space-y-2">
-          <Label htmlFor="gameName" className="text-universe-text-primary">
-            게임명 *
-          </Label>
-          <Input
-            id="gameName"
-            {...register('gameName')}
-            placeholder="당신의 게임 이름을 입력하세요"
-            className={cn(
-              "bg-universe-surface/20 border-universe-surface/30 text-universe-text-primary placeholder:text-universe-text-secondary/50",
-              errors.gameName && "border-red-400 focus:border-red-400"
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* 게임명 */}
+          <div className="space-y-2">
+            <Label htmlFor="gameName" className="text-universe-text-primary">
+              게임명 *
+            </Label>
+            <Input
+              id="gameName"
+              {...register('gameName')}
+              placeholder="게임 이름을 입력하세요"
+              className="bg-universe-surface/50 border-universe-surface/30 text-universe-text-primary placeholder:text-universe-text-secondary/50"
+            />
+            {errors.gameName && (
+              <p className="text-red-400 text-sm">{errors.gameName.message}</p>
             )}
-            aria-invalid={!!errors.gameName}
-            aria-describedby={errors.gameName ? "gameName-error" : undefined}
-          />
-          {errors.gameName && (
-            <div 
-              id="gameName-error"
-              className="text-sm text-red-400"
-              role="alert"
+          </div>
+
+          {/* 장르 */}
+          <div className="space-y-2">
+            <Label htmlFor="genre" className="text-universe-text-primary">
+              장르 *
+            </Label>
+            <Select
+              value={watchedValues.genre}
+              onValueChange={(value) => setValue('genre', value as Genre)}
             >
-              {errors.gameName.message}
-            </div>
-          )}
-        </div>
-
-        {/* 장르 */}
-        <div className="space-y-2">
-          <Label htmlFor="genre" className="text-universe-text-primary">
-            장르 *
-          </Label>
-          <Select
-            value={watchedValues.genre}
-            onValueChange={(value) => setValue('genre', value as Genre)}
-          >
-            <SelectTrigger className="bg-universe-surface/20 border-universe-surface/30 text-universe-text-primary">
-              <SelectValue placeholder="장르를 선택하세요" />
-            </SelectTrigger>
-            <SelectContent className="bg-universe-surface border-universe-surface/30">
-              {Object.entries(GENRES).map(([key, value]) => (
-                <SelectItem key={key} value={value} className="text-universe-text-primary">
-                  {value}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {errors.genre && (
-            <div className="text-sm text-red-400">
-              {errors.genre.message}
-            </div>
-          )}
-        </div>
-
-        {/* 한줄 소개 */}
-        <div className="space-y-2">
-          <Label htmlFor="tagline" className="text-universe-text-primary">
-            한줄 소개 *
-          </Label>
-          <Input
-            id="tagline"
-            {...register('tagline')}
-            placeholder="게임을 한 줄로 설명해주세요"
-            className={cn(
-              "bg-universe-surface/20 border-universe-surface/30 text-universe-text-primary placeholder:text-universe-text-secondary/50",
-              errors.tagline && "border-red-400 focus:border-red-400"
+              <SelectTrigger className="bg-universe-surface/50 border-universe-surface/30 text-universe-text-primary">
+                <SelectValue placeholder="장르를 선택하세요" />
+              </SelectTrigger>
+              <SelectContent className="bg-universe-surface border-universe-surface/30">
+                {Object.entries(GENRES).map(([key, value]) => (
+                  <SelectItem key={key} value={key} className="text-universe-text-primary">
+                    {value}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {errors.genre && (
+              <p className="text-red-400 text-sm">{errors.genre.message}</p>
             )}
-            aria-invalid={!!errors.tagline}
-            aria-describedby={errors.tagline ? "tagline-error" : undefined}
-          />
-          {errors.tagline && (
-            <div 
-              id="tagline-error"
-              className="text-sm text-red-400"
-              role="alert"
-            >
-              {errors.tagline.message}
-            </div>
-          )}
+          </div>
+
+          {/* 태그라인 */}
+          <div className="space-y-2">
+            <Label htmlFor="tagline" className="text-universe-text-primary">
+              태그라인 *
+            </Label>
+            <Input
+              id="tagline"
+              {...register('tagline')}
+              placeholder="게임을 한 줄로 설명하세요"
+              className="bg-universe-surface/50 border-universe-surface/30 text-universe-text-primary placeholder:text-universe-text-secondary/50"
+            />
+            {errors.tagline && (
+              <p className="text-red-400 text-sm">{errors.tagline.message}</p>
+            )}
+          </div>
         </div>
 
         {/* 게임 설명 */}
@@ -328,228 +220,123 @@ export function AdoptionForm({ className = '' }: AdoptionFormProps) {
           <Textarea
             id="description"
             {...register('description')}
-            placeholder="게임에 대해 자세히 설명해주세요 (20자 이상)"
-            rows={6}
-            className={cn(
-              "bg-universe-surface/20 border-universe-surface/30 text-universe-text-primary placeholder:text-universe-text-secondary/50 resize-none",
-              errors.description && "border-red-400 focus:border-red-400"
-            )}
-            aria-invalid={!!errors.description}
-            aria-describedby={errors.description ? "description-error" : undefined}
+            placeholder="게임에 대해 자세히 설명해주세요"
+            rows={4}
+            className="bg-universe-surface/50 border-universe-surface/30 text-universe-text-primary placeholder:text-universe-text-secondary/50"
           />
-          <div className="text-xs text-universe-text-secondary text-right">
-            {watchedValues.description?.length || 0} / 2000
-          </div>
           {errors.description && (
-            <div 
-              id="description-error"
-              className="text-sm text-red-400"
-              role="alert"
-            >
-              {errors.description.message}
-            </div>
+            <p className="text-red-400 text-sm">{errors.description.message}</p>
           )}
         </div>
-      </div>
 
-      {/* 외부 링크 */}
-      <div className="space-y-6">
-        <h3 className="text-xl font-orbitron font-medium text-universe-text-primary">
-          외부 링크
-        </h3>
-        
-        {/* 다운로드 링크 */}
-        <div className="space-y-2">
-          <Label htmlFor="downloadUrl" className="text-universe-text-primary">
-            다운로드 링크 *
-          </Label>
-          <Input
-            id="downloadUrl"
-            {...register('downloadUrl')}
-            placeholder="https://store.steampowered.com/..."
-            className={cn(
-              "bg-universe-surface/20 border-universe-surface/30 text-universe-text-primary placeholder:text-universe-text-secondary/50",
-              errors.downloadUrl && "border-red-400 focus:border-red-400"
+        {/* 외부 링크 */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="space-y-2">
+            <Label htmlFor="downloadUrl" className="text-universe-text-primary">
+              다운로드/구매 링크 *
+            </Label>
+            <Input
+              id="downloadUrl"
+              {...register('downloadUrl')}
+              placeholder="Steam, App Store 등 링크"
+              className="bg-universe-surface/50 border-universe-surface/30 text-universe-text-primary placeholder:text-universe-text-secondary/50"
+            />
+            {errors.downloadUrl && (
+              <p className="text-red-400 text-sm">{errors.downloadUrl.message}</p>
             )}
-            aria-invalid={!!errors.downloadUrl}
-            aria-describedby={errors.downloadUrl ? "downloadUrl-error" : undefined}
-          />
-          {errors.downloadUrl && (
-            <div 
-              id="downloadUrl-error"
-              className="text-sm text-red-400"
-              role="alert"
-            >
-              {errors.downloadUrl.message}
-            </div>
-          )}
-        </div>
+          </div>
 
-        {/* 홈페이지 링크 */}
-        <div className="space-y-2">
-          <Label htmlFor="homepageUrl" className="text-universe-text-primary">
-            홈페이지 링크
-          </Label>
-          <Input
-            id="homepageUrl"
-            {...register('homepageUrl')}
-            placeholder="https://yourgame.com (선택사항)"
-            className={cn(
-              "bg-universe-surface/20 border-universe-surface/30 text-universe-text-primary placeholder:text-universe-text-secondary/50",
-              errors.homepageUrl && "border-red-400 focus:border-red-400"
+          <div className="space-y-2">
+            <Label htmlFor="homepageUrl" className="text-universe-text-primary">
+              공식 웹사이트 (선택)
+            </Label>
+            <Input
+              id="homepageUrl"
+              {...register('homepageUrl')}
+              placeholder="게임 공식 웹사이트"
+              className="bg-universe-text-secondary/50"
+            />
+            {errors.homepageUrl && (
+              <p className="text-red-400 text-sm">{errors.homepageUrl.message}</p>
             )}
-            aria-invalid={!!errors.homepageUrl}
-            aria-describedby={errors.homepageUrl ? "homepageUrl-error" : undefined}
-          />
-          {errors.homepageUrl && (
-            <div 
-              id="homepageUrl-error"
-              className="text-sm text-red-400"
-              role="alert"
-            >
-              {errors.homepageUrl.message}
-            </div>
-          )}
+          </div>
         </div>
       </div>
 
-      {/* 파일 업로드 */}
-      <div className="space-y-6">
-        <h3 className="text-xl font-orbitron font-medium text-universe-text-primary">
-          게임 이미지
-        </h3>
-        
-        {/* 썸네일 업로드 */}
-        <FileUpload
-          files={thumbnailFile}
-          onFilesChange={setThumbnailFile}
-          maxFiles={1}
-          maxSize={5}
-          acceptedTypes={['image/png', 'image/jpeg']}
-          label="썸네일 이미지 (64x64 픽셀아트 권장) *"
-          required={true}
-        />
-
-        {/* 스크린샷 업로드 */}
-        <FileUpload
-          files={screenshotFiles}
-          onFilesChange={setScreenshotFiles}
-          maxFiles={4}
-          maxSize={5}
-          acceptedTypes={['image/png', 'image/jpeg', 'image/gif']}
-          label="스크린샷 또는 GIF (최대 4장) *"
-          required={true}
-        />
-      </div>
-
-      {/* 행성 커스터마이제이션 */}
+      {/* 스크린샷 업로드 */}
       <div className="space-y-6">
         <div className="flex items-center gap-3">
-          <Sparkles className="w-6 h-6 text-universe-primary" />
+          <Rocket className="w-6 h-6 text-universe-primary" />
           <h3 className="text-xl font-orbitron font-medium text-universe-text-primary">
-            행성 커스터마이제이션
+            스크린샷 업로드
           </h3>
         </div>
         
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* 커스터마이제이션 컨트롤 */}
-          <div className="space-y-6">
-            {/* 행성 유형 선택 */}
-            <div className="space-y-4">
-              <h4 className="text-lg font-medium text-universe-text-primary">
-                행성 유형
-              </h4>
-              <PlanetTypeSelector
-                selectedType={selectedPlanetType}
-                onSelect={handlePlanetTypeSelect}
-                error={errors.planetType?.message}
-              />
-            </div>
+        <div className="space-y-4">
+          <p className="text-sm text-universe-text-secondary">
+            게임의 핵심 특징을 보여주는 스크린샷을 업로드해주세요 (최소 1개, 최대 5개)
+          </p>
+          
+          <FileUpload
+            files={screenshotFiles}
+            onFilesChange={setScreenshotFiles}
+            maxFiles={5}
+            maxSize={5}
+            acceptedTypes={['image/png', 'image/jpeg', 'image/gif']}
+            label="스크린샷 업로드"
+            required={true}
+          />
+        </div>
+      </div>
 
-            {/* 색상 선택 */}
-            <div className="space-y-4">
-              <h4 className="text-lg font-medium text-universe-text-primary flex items-center gap-2">
-                <Palette className="w-5 h-5" />
-                색상
-              </h4>
-              <div className="grid grid-cols-1 gap-4">
-                <ColorPicker
-                  label="주요 색상"
-                  value={customization.colors.primary}
-                  onChange={handlePrimaryColorChange}
-                  error={errors.customization?.colors?.primary?.message}
-                />
-                <ColorPicker
-                  label="보조 색상"
-                  value={customization.colors.secondary || '#05d9e8'}
-                  onChange={handleSecondaryColorChange}
-                  error={errors.customization?.colors?.secondary?.message}
+      {/* 절차적 행성 미리보기 */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <Rocket className="w-6 h-6 text-universe-primary" />
+          <h3 className="text-xl font-orbitron font-medium text-universe-text-primary">
+            자동 생성된 행성 미리보기
+          </h3>
+        </div>
+        
+        <div className="flex justify-center">
+          <div className="relative">
+            {planetPreviewCanvas ? (
+              <div 
+                className="border-2 border-universe-surface/30 rounded-lg overflow-hidden"
+                style={{ width: 200, height: 200 }}
+              >
+                <canvas
+                  ref={(el) => {
+                    if (el && planetPreviewCanvas) {
+                      const ctx = el.getContext('2d');
+                      if (ctx) {
+                        el.width = 200;
+                        el.height = 200;
+                        ctx.drawImage(planetPreviewCanvas, 0, 0);
+                      }
+                    }
+                  }}
+                  width={200}
+                  height={200}
+                  className="w-full h-full"
                 />
               </div>
-            </div>
-
-            {/* 질감 선택 */}
-            <div className="space-y-4">
-              <h4 className="text-lg font-medium text-universe-text-primary">
-                질감
-              </h4>
-              <TextureSelector
-                selectedTexture={customization.texture.id}
-                intensity={customization.texture.intensity}
-                onTextureChange={handleTextureChange}
-                onIntensityChange={handleTextureIntensityChange}
-                error={errors.customization?.texture?.id?.message}
-              />
-            </div>
-
-            {/* 외부 요소 */}
-            <div className="space-y-4">
-              <h4 className="text-lg font-medium text-universe-text-primary">
-                외부 요소
-              </h4>
-              <ExteriorSelector
-                rings={customization.exterior.rings || false}
-                satellites={customization.exterior.satellites || 0}
-                onRingsChange={handleRingsChange}
-                onSatellitesChange={handleSatellitesChange}
-              />
-            </div>
-
-            {/* 내부 요소 */}
-            <div className="space-y-4">
-              <h4 className="text-lg font-medium text-universe-text-primary">
-                내부 요소
-              </h4>
-              <InteriorSelector
-                water={customization.interior.water || false}
-                volcano={customization.interior.volcano || false}
-                land={customization.interior.land || false}
-                storm={customization.interior.storm || false}
-                onWaterChange={(value) => handleInteriorChange({ water: value })}
-                onVolcanoChange={(value) => handleInteriorChange({ volcano: value })}
-                onLandChange={(value) => handleInteriorChange({ land: value })}
-                onStormChange={(value) => handleInteriorChange({ storm: value })}
-              />
-            </div>
-          </div>
-
-          {/* 실시간 미리보기 */}
-          <div className="space-y-4">
-            <h4 className="text-lg font-medium text-universe-text-primary">
-              실시간 미리보기
-            </h4>
-            <div className="flex justify-center">
-              <PlanetPreview
-                customization={customization}
-                size={300}
-                className="border-2 border-universe-surface/30 rounded-lg p-4"
-              />
-            </div>
-            <p className="text-sm text-universe-text-secondary text-center">
-              선택한 옵션들이 실시간으로 반영됩니다
-            </p>
+            ) : (
+              <div 
+                className="border-2 border-universe-surface/30 rounded-lg bg-universe-surface/20 flex items-center justify-center"
+                style={{ width: 200, height: 200 }}
+              >
+                <div className="text-universe-text-secondary text-sm text-center">
+                  게임 정보를 입력하면<br />자동으로 생성됩니다
+                </div>
+              </div>
+            )}
           </div>
         </div>
+        
+        <p className="text-sm text-universe-text-secondary text-center">
+          게임명, 장르, 설명을 기반으로 절차적으로 생성되는 고유한 행성입니다
+        </p>
       </div>
 
       {/* 진행률 표시 */}
@@ -572,7 +359,7 @@ export function AdoptionForm({ className = '' }: AdoptionFormProps) {
       <div className="pt-6">
         <Button
           type="submit"
-          disabled={!isValid || isSubmitting || thumbnailFile.length === 0 || screenshotFiles.length === 0}
+          disabled={!isValid || isSubmitting || screenshotFiles.length === 0}
           className="w-full bg-universe-primary hover:bg-universe-primary/90 text-white font-medium py-4 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
           size="lg"
         >
@@ -593,7 +380,3 @@ export function AdoptionForm({ className = '' }: AdoptionFormProps) {
   );
 }
 
-// cn 유틸리티 함수 (utils.ts에 이미 있을 수 있음)
-function cn(...classes: (string | undefined | null | false)[]): string {
-  return classes.filter(Boolean).join(' ');
-}

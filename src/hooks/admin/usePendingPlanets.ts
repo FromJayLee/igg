@@ -28,34 +28,10 @@ export function usePendingPlanets() {
         downloadUrl: row.download_url,
         homepageUrl: row.homepage_url,
         planetType: row.planet_type,
-        customization: row.customization || {
-          version: 1,
-          type: row.planet_type || 'terran',
-          colors: {
-            primary: '#ff2d9d',
-            secondary: '#05d9e8',
-            preset: 'neon_magenta',
-          },
-          texture: {
-            id: 'none',
-            intensity: 0.5,
-          },
-          exterior: {
-            rings: false,
-            satellites: 0,
-          },
-          interior: {
-            water: false,
-            volcano: false,
-            land: false,
-            storm: false,
-          },
-          seed: Math.floor(Math.random() * 1000000),
-        },
-        thumbnailUrl: row.thumbnail_url,
+        planetThumbnailUrl: row.planet_thumbnail_url, // 새로운 컬럼 사용
         screenshotUrls: row.screenshot_urls || [],
         status: row.status,
-        submittedBy: row.submitted_by,
+        submittedBy: row.submitted_by || 'unknown',
         createdAt: new Date(row.created_at),
         updatedAt: new Date(row.updated_at),
       }));
@@ -68,53 +44,42 @@ export function usePendingPlanets() {
 // 행성 상태 업데이트
 export function useUpdatePlanetStatus() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async ({ 
       planetId, 
-      status 
+      status, 
+      feedback 
     }: { 
       planetId: string; 
-      status: 'approved' | 'rejected' 
+      status: 'approved' | 'rejected'; 
+      feedback?: string; 
     }) => {
       const supabase = createClient();
       
-      // 승인 시 우주 맵 위치 할당
-      let updateData: any = { 
-        status, 
-        updated_at: new Date().toISOString() 
-      };
-
-      if (status === 'approved') {
-        // 승인된 행성에 랜덤 위치 할당 (실제로는 더 정교한 알고리즘 필요)
-        updateData.position = {
-          x: Math.random() * 2000 - 1000, // -1000 ~ 1000
-          y: Math.random() * 2000 - 1000, // -1000 ~ 1000
-        };
-      }
-
       const { data, error } = await supabase
         .from('planets')
-        .update(updateData)
+        .update({ 
+          status, 
+          feedback: feedback || null,
+          updated_at: new Date().toISOString() 
+        })
         .eq('id', planetId)
         .select()
         .single();
 
       if (error) {
-        throw new Error(`행성 상태 업데이트 실패: ${error.message}`);
+        throw new Error(`상태 업데이트 실패: ${error.message}`);
       }
 
       return data;
     },
     onSuccess: () => {
-      // 성공 시 행성 목록 캐시 무효화
+      // 캐시 무효화
       queryClient.invalidateQueries({ queryKey: ['admin', 'planets'] });
-      
-      // 우주 맵 캐시도 무효화 (승인된 행성이 맵에 표시되어야 함)
-      queryClient.invalidateQueries({ queryKey: ['universe', 'planets'] });
     },
     onError: (error) => {
-      console.error('행성 상태 업데이트 오류:', error);
+      console.error('상태 업데이트 오류:', error);
     },
   });
 }
@@ -150,34 +115,10 @@ export function usePlanetDetail(planetId: string) {
         downloadUrl: data.download_url,
         homepageUrl: data.homepage_url,
         planetType: data.planet_type,
-        customization: data.customization || {
-          version: 1,
-          type: data.planet_type || 'terran',
-          colors: {
-            primary: '#ff2d9d',
-            secondary: '#05d9e8',
-            preset: 'neon_magenta',
-          },
-          texture: {
-            id: 'none',
-            intensity: 0.5,
-          },
-          exterior: {
-            rings: false,
-            satellites: 0,
-          },
-          interior: {
-            water: false,
-            volcano: false,
-            land: false,
-            storm: false,
-          },
-          seed: Math.floor(Math.random() * 1000000),
-        },
-        thumbnailUrl: data.thumbnail_url,
+        planetThumbnailUrl: data.planet_thumbnail_url, // 새로운 컬럼 사용
         screenshotUrls: data.screenshot_urls || [],
         status: data.status,
-        submittedBy: data.submitted_by,
+        submittedBy: data.submitted_by || 'unknown',
         createdAt: new Date(data.created_at),
         updatedAt: new Date(data.updated_at),
       };
@@ -190,37 +131,55 @@ export function usePlanetDetail(planetId: string) {
 // 통계 정보 조회
 export function usePlanetStats() {
   return useQuery({
-    queryKey: ['admin', 'planets', 'stats'],
+    queryKey: ['admin', 'stats'],
     queryFn: async () => {
       const supabase = createClient();
       
-      const { data, error } = await supabase
+      // 전체 행성 수
+      const { count: totalCount, error: totalError } = await supabase
         .from('planets')
-        .select('status, created_at');
+        .select('*', { count: 'exact', head: true });
 
-      if (error) {
-        throw new Error(`통계 정보 조회 실패: ${error.message}`);
+      if (totalError) {
+        throw new Error(`전체 행성 수 조회 실패: ${totalError.message}`);
       }
 
-      const stats = {
-        total: data?.length || 0,
-        pending: data?.filter(p => p.status === 'pending').length || 0,
-        approved: data?.filter(p => p.status === 'approved').length || 0,
-        rejected: data?.filter(p => p.status === 'rejected').length || 0,
-        today: data?.filter(p => {
-          const today = new Date();
-          const createdDate = new Date(p.created_at);
-          return today.toDateString() === createdDate.toDateString();
-        }).length || 0,
-        thisWeek: data?.filter(p => {
-          const now = new Date();
-          const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-          const createdDate = new Date(p.created_at);
-          return createdDate >= weekAgo;
-        }).length || 0,
-      };
+      // 승인 대기 중인 행성 수
+      const { count: pendingCount, error: pendingError } = await supabase
+        .from('planets')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'pending');
 
-      return stats;
+      if (pendingError) {
+        throw new Error(`대기 행성 수 조회 실패: ${pendingError.message}`);
+      }
+
+      // 승인된 행성 수
+      const { count: approvedCount, error: approvedError } = await supabase
+        .from('planets')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'approved');
+
+      if (approvedError) {
+        throw new Error(`승인 행성 수 조회 실패: ${approvedError.message}`);
+      }
+
+      // 거절된 행성 수
+      const { count: rejectedCount, error: rejectedError } = await supabase
+        .from('planets')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'rejected');
+
+      if (rejectedError) {
+        throw new Error(`거절 행성 수 조회 실패: ${rejectedError.message}`);
+      }
+
+      return {
+        total: totalCount || 0,
+        pending: pendingCount || 0,
+        approved: approvedCount || 0,
+        rejected: rejectedCount || 0,
+      };
     },
     staleTime: 60 * 1000, // 1분
     refetchInterval: 5 * 60 * 1000, // 5분마다 자동 새로고침

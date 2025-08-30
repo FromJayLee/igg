@@ -1,14 +1,26 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import dynamic from 'next/dynamic';
 import { CanvasLayer } from './CanvasLayer';
 import { PreviewCardPortal } from './PreviewCard';
-import { PlanetDetailModal } from './PlanetDetailModal';
 import { Planet, CameraState, InteractionState } from '@/types/universe';
 import { UNIVERSE_CONFIG, CAMERA_CONFIG } from '@/constants/universe';
 import { generateRandomPlanets } from '@/lib/universe-utils';
 import * as PIXI from 'pixi.js';
 import { useRouter } from 'next/navigation';
+
+// PlanetDetailModal을 동적으로 로드 (클라이언트 전용)
+const PlanetDetailModal = dynamic(() => import('./PlanetDetailModal').then(mod => ({ default: mod.PlanetDetailModal })), { 
+  ssr: false,
+  loading: () => (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div className="bg-universe-surface/95 backdrop-blur-md rounded-2xl p-8 border border-white/20 shadow-2xl">
+        <div className="text-universe-text-primary">로딩 중...</div>
+      </div>
+    </div>
+  )
+});
 
 interface UniverseMapProps {
   className?: string;

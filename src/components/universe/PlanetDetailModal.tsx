@@ -103,188 +103,62 @@ export function PlanetDetailModal({ planetId, onClose }: PlanetDetailModalProps)
     return () => document.removeEventListener('keydown', handleEscape);
   }, []);
 
-  // 포커스 트랩
-  useEffect(() => {
-    if (modalRef.current) {
-      const focusableElements = modalRef.current.querySelectorAll(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-      );
-      const firstElement = focusableElements[0] as HTMLElement;
-      const lastElement = focusableElements[focusableElements.length - 1] as HTMLElement;
-
-      if (firstElement) {
-        firstElement.focus();
-      }
-
-      const handleTabKey = (e: KeyboardEvent) => {
-        if (e.key === 'Tab') {
-          if (e.shiftKey) {
-            if (document.activeElement === firstElement) {
-              e.preventDefault();
-              lastElement.focus();
-            }
-          } else {
-            if (document.activeElement === lastElement) {
-              e.preventDefault();
-              firstElement.focus();
-            }
-          }
-        }
-      };
-
-      document.addEventListener('keydown', handleTabKey);
-      return () => document.removeEventListener('keydown', handleTabKey);
-    }
-  }, []);
-
-  // 스크롤 잠금
-  useEffect(() => {
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, []);
-
+  // 모달 닫기 핸들러
   const handleClose = useCallback(() => {
-    setIsAnimating(true);
-    // 애니메이션 완료 후 모달 닫기
-    setTimeout(() => {
-      closeModal();
+    if (onClose) {
       onClose();
-      router.back();
-    }, 300);
-  }, [closeModal, onClose, router]);
+    }
+    if (closeModal) {
+      closeModal();
+    }
+  }, [onClose, closeModal]);
 
-  const handleExternalClick = useCallback((url: string) => {
-    // 분석 이벤트 훅 (후속 구현 예정)
-    console.log('External link clicked:', url);
+  // 이미지 변경 핸들러
+  const handleImageChange = useCallback((direction: 'next' | 'prev') => {
+    if (!planetData) return;
+    
+    setIsAnimating(true);
+    setTimeout(() => {
+      if (direction === 'next') {
+        setCurrentImageIndex((prev) => 
+          prev === planetData.gallery.length - 1 ? 0 : prev + 1
+        );
+      } else {
+        setCurrentImageIndex((prev) => 
+          prev === 0 ? planetData.gallery.length - 1 : prev - 1
+        );
+      }
+      setIsAnimating(false);
+    }, 200);
+  }, [planetData]);
+
+  // 외부 링크 열기
+  const handleExternalLink = useCallback((url: string) => {
     window.open(url, '_blank', 'noopener,noreferrer');
   }, []);
-
-  const nextImage = useCallback(() => {
-    if (!planetData) return;
-    setCurrentImageIndex((prev) => 
-      prev === planetData.gallery.length - 1 ? 0 : prev + 1
-    );
-  }, [planetData]);
-
-  const prevImage = useCallback(() => {
-    if (!planetData) return;
-    setCurrentImageIndex((prev) => 
-      prev === 0 ? planetData.gallery.length - 1 : prev - 1
-    );
-  }, [planetData]);
 
   if (!planetData) {
     return null;
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby={`planet-title-${planetId}`}
-    >
-      {/* 배경 오버레이 */}
-      <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-md transition-opacity duration-300"
-        onClick={handleClose}
-      />
-
-      {/* 모달 컨테이너 */}
-      <div
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      <div 
         ref={modalRef}
-        className={`relative w-full max-w-4xl max-h-[90vh] bg-universe-surface/95 backdrop-blur-xl rounded-2xl border border-white/20 shadow-2xl overflow-hidden transition-all duration-300 ${
-          isAnimating ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
-        }`}
+        className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-universe-surface/95 backdrop-blur-md rounded-2xl border border-white/20 shadow-2xl"
       >
-        {/* 닫기 버튼 */}
-        <button
-          onClick={handleClose}
-          className="absolute top-4 right-4 z-10 w-10 h-10 bg-universe-surface/80 hover:bg-universe-surface rounded-full flex items-center justify-center text-white hover:text-universe-primary transition-all duration-200 hover:scale-110"
-          aria-label="모달 닫기"
-        >
-          <X size={20} />
-        </button>
-
-        <div className="flex flex-col lg:flex-row h-full">
-          {/* 좌측 비주얼 영역 */}
-          <div className="lg:w-1/2 p-6 flex flex-col items-center">
-            {/* 회전하는 행성 썸네일 */}
-            <div className="relative w-48 h-48 mb-6">
-              <div className="w-full h-full rounded-full overflow-hidden border-4 border-universe-primary/30 animate-spin-slow">
-                <img
-                  src={planetData.thumbnailUrl}
-                  alt={`${planetData.name} 썸네일`}
-                  className="w-full h-full object-cover"
-                />
+        {/* 헤더 */}
+        <div className="sticky top-0 z-10 bg-universe-surface/95 backdrop-blur-md border-b border-white/20 p-6 rounded-t-2xl">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-universe-primary/20 flex items-center justify-center">
+                <span className="text-2xl">🌍</span>
               </div>
-              <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-universe-secondary animate-spin-slow-reverse"></div>
-            </div>
-
-            {/* 갤러리 */}
-            {planetData.gallery.length > 0 && (
-              <div className="w-full max-w-sm">
-                <div className="relative">
-                  <img
-                    src={planetData.gallery[currentImageIndex]}
-                    alt={`${planetData.name} 스크린샷 ${currentImageIndex + 1}`}
-                    className="w-full h-48 object-cover rounded-lg border border-white/20"
-                  />
-                  
-                  {/* 갤러리 네비게이션 */}
-                  {planetData.gallery.length > 1 && (
-                    <>
-                      <button
-                        onClick={prevImage}
-                        className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-universe-surface/80 hover:bg-universe-surface rounded-full flex items-center justify-center text-white hover:text-universe-primary transition-all duration-200"
-                        aria-label="이전 이미지"
-                      >
-                        <ChevronLeft size={16} />
-                      </button>
-                      <button
-                        onClick={nextImage}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-universe-surface/80 hover:bg-universe-surface rounded-full flex items-center justify-center text-white hover:text-universe-primary transition-all duration-200"
-                        aria-label="다음 이미지"
-                      >
-                        <ChevronRight size={16} />
-                      </button>
-                      
-                      {/* 이미지 인디케이터 */}
-                      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-2">
-                        {planetData.gallery.map((_, index) => (
-                          <button
-                            key={index}
-                            onClick={() => setCurrentImageIndex(index)}
-                            className={`w-2 h-2 rounded-full transition-all duration-200 ${
-                              index === currentImageIndex
-                                ? 'bg-universe-primary w-4'
-                                : 'bg-white/40 hover:bg-white/60'
-                            }`}
-                            aria-label={`이미지 ${index + 1}로 이동`}
-                          />
-                        ))}
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* 우측 정보 패널 */}
-          <div className="lg:w-1/2 p-6 flex flex-col justify-between">
-            <div className="space-y-4">
-              {/* 게임 제목 및 장르 */}
               <div>
-                <h2
-                  id={`planet-title-${planetId}`}
-                  className="text-3xl font-orbitron font-bold text-universe-text-primary mb-2"
-                >
+                <h2 className="text-2xl font-orbitron font-bold text-universe-text-primary">
                   {planetData.name}
                 </h2>
-                <div className="flex items-center gap-3 mb-3">
+                <div className="flex items-center gap-2 mt-1">
                   <Badge variant="secondary" className="bg-universe-primary/20 text-universe-primary border-universe-primary/30">
                     {planetData.genre}
                   </Badge>
@@ -292,66 +166,172 @@ export function PlanetDetailModal({ planetId, onClose }: PlanetDetailModalProps)
                     {planetData.type}
                   </Badge>
                 </div>
-                <p className="text-lg text-universe-text-secondary font-medium">
-                  {planetData.tagline}
-                </p>
               </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleClose}
+              className="text-universe-text-secondary hover:text-universe-text-primary hover:bg-white/10"
+            >
+              <X className="w-6 h-6" />
+            </Button>
+          </div>
+        </div>
 
-              {/* 상세 설명 */}
+        {/* 콘텐츠 */}
+        <div className="p-6 space-y-6">
+          {/* 태그라인 */}
+          <div className="text-center">
+            <p className="text-lg text-universe-text-secondary font-pixel italic">
+              "{planetData.tagline}"
+            </p>
+          </div>
+
+          {/* 썸네일과 기본 정보 */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* 썸네일 */}
+            <div className="md:col-span-1">
+              <Card className="overflow-hidden border-universe-surface/30 bg-universe-surface/50">
+                <img
+                  src={planetData.thumbnailUrl}
+                  alt={planetData.name}
+                  className="w-full aspect-square object-cover"
+                  style={{ imageRendering: 'pixelated' }}
+                />
+              </Card>
+            </div>
+
+            {/* 기본 정보 */}
+            <div className="md:col-span-2 space-y-4">
               <div>
                 <h3 className="text-lg font-orbitron font-medium text-universe-text-primary mb-2">
-                  게임 소개
+                  게임 설명
                 </h3>
                 <p className="text-universe-text-secondary leading-relaxed">
                   {planetData.description}
                 </p>
               </div>
 
-              {/* 개발자 정보 */}
-              {planetData.developerName && (
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <h3 className="text-lg font-orbitron font-medium text-universe-text-primary mb-2">
-                    개발 정보
-                  </h3>
-                  <div className="space-y-2 text-universe-text-secondary">
-                    <p><span className="font-medium">개발사:</span> {planetData.developerName}</p>
-                    {planetData.releaseDate && (
-                      <p><span className="font-medium">출시일:</span> {planetData.releaseDate}</p>
-                    )}
-                    {planetData.platforms && (
-                      <p><span className="font-medium">플랫폼:</span> {planetData.platforms.join(', ')}</p>
-                    )}
+                  <h4 className="text-sm font-medium text-universe-text-secondary mb-1">개발사</h4>
+                  <p className="text-universe-text-primary">{planetData.developerName}</p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-universe-text-secondary mb-1">출시일</h4>
+                  <p className="text-universe-text-primary">{planetData.releaseDate}</p>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-universe-text-secondary mb-1">플랫폼</h4>
+                  <div className="flex flex-wrap gap-1">
+                    {planetData.platforms.map((platform) => (
+                      <Badge key={platform} variant="outline" className="text-xs border-universe-secondary/30 text-universe-secondary">
+                        {platform}
+                      </Badge>
+                    ))}
                   </div>
                 </div>
-              )}
+                <div>
+                  <h4 className="text-sm font-medium text-universe-text-secondary mb-1">행성 유형</h4>
+                  <Badge variant="outline" className="border-universe-primary/30 text-universe-primary">
+                    {planetData.type}
+                  </Badge>
+                </div>
+              </div>
             </div>
+          </div>
 
-            {/* 액션 버튼들 */}
-            <div className="space-y-3 pt-4 border-t border-white/10">
+          {/* 갤러리 */}
+          {planetData.gallery.length > 0 && (
+            <div>
+              <h3 className="text-lg font-orbitron font-medium text-universe-text-primary mb-4">
+                스크린샷 갤러리
+              </h3>
+              <div className="relative">
+                <div className="relative overflow-hidden rounded-xl border border-universe-surface/30">
+                  <img
+                    src={planetData.gallery[currentImageIndex]}
+                    alt={`${planetData.name} 스크린샷 ${currentImageIndex + 1}`}
+                    className={`w-full h-64 object-cover transition-opacity duration-200 ${
+                      isAnimating ? 'opacity-0' : 'opacity-100'
+                    }`}
+                  />
+                  
+                  {/* 네비게이션 버튼 */}
+                  {planetData.gallery.length > 1 && (
+                    <>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleImageChange('prev')}
+                        className="absolute left-2 top-1/2 -translate-y-1/2 bg-universe-surface/80 hover:bg-universe-surface/90 text-universe-text-primary"
+                        disabled={isAnimating}
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleImageChange('next')}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 bg-universe-surface/80 hover:bg-universe-surface/90 text-universe-text-primary"
+                        disabled={isAnimating}
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </Button>
+                    </>
+                  )}
+                </div>
+                
+                {/* 썸네일 인디케이터 */}
+                {planetData.gallery.length > 1 && (
+                  <div className="flex justify-center gap-2 mt-4">
+                    {planetData.gallery.map((_, index) => (
+                      <button
+                        key={index}
+                        onClick={() => setCurrentImageIndex(index)}
+                        className={`w-2 h-2 rounded-full transition-colors ${
+                          index === currentImageIndex
+                            ? 'bg-universe-primary'
+                            : 'bg-universe-surface/30 hover:bg-universe-surface/50'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* 액션 버튼 */}
+          <div className="flex flex-col sm:flex-row gap-3 pt-4">
+            {planetData.externalUrl && (
               <Button
-                onClick={() => handleExternalClick(planetData.externalUrl)}
-                className="w-full bg-universe-primary hover:bg-universe-primary/90 text-white font-medium py-3 text-lg"
+                onClick={() => handleExternalLink(planetData.externalUrl!)}
+                className="flex-1 bg-universe-primary hover:bg-universe-primary/90 text-white font-medium"
                 size="lg"
               >
-                <Play size={20} className="mr-2" />
-                Steam에서 구매하기
+                <Play className="w-4 h-4 mr-2" />
+                게임 플레이
               </Button>
-              
-              {planetData.websiteUrl && (
-                <Button
-                  onClick={() => handleExternalClick(planetData.websiteUrl!)}
-                  variant="outline"
-                  className="w-full border-universe-secondary/30 text-universe-secondary hover:bg-universe-secondary/10 font-medium py-3"
-                  size="lg"
-                >
-                  <ExternalLink size={20} className="mr-2" />
-                  공식 웹사이트
-                </Button>
-              )}
-            </div>
+            )}
+            {planetData.websiteUrl && (
+              <Button
+                variant="outline"
+                onClick={() => handleExternalLink(planetData.websiteUrl!)}
+                className="flex-1 border-universe-secondary/30 text-universe-secondary hover:bg-universe-secondary/10"
+                size="lg"
+              >
+                <ExternalLink className="w-4 h-4 mr-2" />
+                공식 웹사이트
+              </Button>
+            )}
           </div>
         </div>
       </div>
     </div>
   );
 }
+
+// export default 추가
+export default PlanetDetailModal;

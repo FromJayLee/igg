@@ -1,12 +1,7 @@
+'use client';
+
 import { AdoptionForm } from '@/components/adoption/AdoptionForm';
 import { StarBackground } from '@/components/ui/StarBackground';
-import { Metadata } from 'next';
-
-export const metadata: Metadata = {
-  title: '행성 분양 신청 - Indie Game Galaxy',
-  description: '당신의 게임을 우주 맵에 전시할 행성을 분양받으세요. 무료로 시작하는 인디게임 홍보 플랫폼입니다.',
-  keywords: '인디게임, 게임 홍보, 행성 분양, 우주 맵, 게임 전시',
-};
 
 export default function AdoptPlanetPage() {
   return (
@@ -58,8 +53,6 @@ export default function AdoptPlanetPage() {
           <div className="bg-slate-900/95 backdrop-blur-xl rounded-2xl p-8 border border-slate-700/50 shadow-2xl">
             <AdoptionForm />
           </div>
-
-
         </div>
       </div>
     </div>

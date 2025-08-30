@@ -1,13 +1,20 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Eye, CheckCircle, XCircle, Clock, ExternalLink, Palette, Sparkles } from 'lucide-react';
+import { Card } from '@/components/ui/card';
+import { 
+  CheckCircle, 
+  XCircle, 
+  Clock, 
+  Eye, 
+  ExternalLink,
+  Download,
+  Globe
+} from 'lucide-react';
 import { PlanetAdoption } from '@/types/adoption';
-import { formatDistanceToNow } from 'date-fns';
-import { ko } from 'date-fns/locale';
+import { useUpdatePlanetStatus } from '@/hooks/admin/useUpdatePlanetStatus';
 
 interface PendingPlanetsTableProps {
   planets: PlanetAdoption[];
@@ -17,78 +24,33 @@ interface PendingPlanetsTableProps {
   onPreview: (planet: PlanetAdoption) => void;
 }
 
-const getStatusBadge = (status: string) => {
-  switch (status) {
-    case 'pending':
-      return <Badge variant="secondary" className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">승인 대기</Badge>;
-    case 'approved':
-      return <Badge variant="secondary" className="bg-green-500/20 text-green-400 border-green-500/30">승인 완료</Badge>;
-    case 'rejected':
-      return <Badge variant="secondary" className="bg-red-500/20 text-red-400 border-red-500/30">거절됨</Badge>;
-    default:
-      return <Badge variant="secondary">알 수 없음</Badge>;
-  }
-};
-
+// 상태별 아이콘 반환
 const getStatusIcon = (status: string) => {
   switch (status) {
-    case 'pending':
-      return <Clock className="w-4 h-4 text-yellow-400" />;
     case 'approved':
-      return <CheckCircle className="w-4 h-4 text-green-400" />;
+      return <CheckCircle className="w-4 h-4 text-green-500" />;
     case 'rejected':
-      return <XCircle className="w-4 h-4 text-red-400" />;
+      return <XCircle className="w-4 h-4 text-red-500" />;
+    case 'pending':
     default:
       return <Clock className="w-4 h-4 text-gray-400" />;
   }
 };
 
-// 커스터마이제이션 정보를 간단하게 표시하는 컴포넌트
-const CustomizationInfo = ({ customization }: { customization: any }) => {
-  if (!customization || Object.keys(customization).length === 0) {
-    return (
-      <div className="text-xs text-universe-text-secondary/70">
-        기본 설정
-      </div>
-    );
-  }
-
-  const hasCustomization = customization.colors?.primary !== '#ff2d9d' ||
-    customization.texture?.id !== 'none' ||
-    customization.exterior?.rings ||
-    customization.exterior?.satellites > 0 ||
-    Object.values(customization.interior || {}).some(Boolean);
-
-  if (!hasCustomization) {
-    return (
-      <div className="text-xs text-universe-text-secondary/70">
-        기본 설정
-      </div>
-    );
-  }
-
+// 행성 썸네일 표시 컴포넌트
+const PlanetThumbnail = ({ thumbnailUrl, gameName }: { thumbnailUrl: string; gameName: string }) => {
   return (
-    <div className="space-y-1">
-      <div className="flex items-center gap-1 text-xs text-universe-text-secondary">
-        <Palette className="w-3 h-3" />
-        커스터마이징됨
+    <div className="flex items-center gap-3">
+      <div className="w-12 h-12 rounded-lg overflow-hidden border border-universe-surface/30">
+        <img
+          src={thumbnailUrl}
+          alt={`${gameName} 썸네일`}
+          className="w-full h-full object-cover"
+          style={{ imageRendering: 'pixelated' }}
+        />
       </div>
-      <div className="flex flex-wrap gap-1">
-        {customization.texture?.id !== 'none' && (
-          <Badge variant="outline" className="text-xs px-1 py-0 border-universe-surface/30">
-            {customization.texture.id}
-          </Badge>
-        )}
-        {customization.exterior?.rings && (
-          <Badge variant="outline" className="text-xs px-1 py-0 border-universe-surface/30">
-            고리
-          </Badge>
-        )}
-        {customization.exterior?.satellites > 0 && (
-          <Badge variant="outline" className="text-xs px-1 py-0 border-universe-surface/30">
-            위성 {customization.exterior.satellites}개
-          </Badge>
-        )}
+      <div className="text-sm text-universe-text-primary font-medium">
+        {gameName}
       </div>
     </div>
   );
@@ -101,13 +63,26 @@ export function PendingPlanetsTable({
   onStatusUpdate, 
   onPreview 
 }: PendingPlanetsTableProps) {
+  const [feedback, setFeedback] = useState<Record<string, string>>({});
+  const updateStatus = useUpdatePlanetStatus();
+
+  const handleStatusUpdate = async (planetId: string, status: 'approved' | 'rejected') => {
+    const feedbackText = feedback[planetId] || '';
+    
+    try {
+      await updateStatus.mutateAsync({ planetId, status, feedback: feedbackText });
+      onStatusUpdate(planetId, status);
+      // 피드백 입력 초기화
+      setFeedback(prev => ({ ...prev, [planetId]: '' }));
+    } catch (error) {
+      console.error('상태 업데이트 실패:', error);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="text-center">
-          <div className="w-8 h-8 border-2 border-universe-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-universe-text-secondary">로딩 중...</p>
-        </div>
+        <div className="text-universe-text-secondary">로딩 중...</div>
       </div>
     );
   }
@@ -115,168 +90,143 @@ export function PendingPlanetsTable({
   if (planets.length === 0) {
     return (
       <div className="text-center py-12">
-        <div className="w-16 h-16 bg-universe-surface/20 rounded-full flex items-center justify-center mx-auto mb-4">
-          <Clock className="w-8 h-8 text-universe-text-secondary" />
+        <div className="text-universe-text-secondary text-lg mb-2">
+          대기 중인 행성 분양 신청이 없습니다
         </div>
-        <p className="text-universe-text-secondary text-lg">승인 대기 중인 신청이 없습니다</p>
-        <p className="text-universe-text-secondary/70 text-sm mt-2">
-          새로운 행성 분양 신청을 기다리고 있습니다
-        </p>
+        <div className="text-universe-text-secondary/70 text-sm">
+          새로운 신청이 들어오면 여기에 표시됩니다
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="overflow-x-auto">
-      <Table>
-        <TableHeader>
-          <TableRow className="border-universe-surface/30 hover:bg-universe-surface/20">
-            <TableHead className="text-universe-text-primary font-medium">게임 정보</TableHead>
-            <TableHead className="text-universe-text-primary font-medium">장르</TableHead>
-            <TableHead className="text-universe-text-primary font-medium">행성 유형</TableHead>
-            <TableHead className="text-universe-text-primary font-medium">커스터마이징</TableHead>
-            <TableHead className="text-universe-text-primary font-medium">상태</TableHead>
-            <TableHead className="text-universe-text-primary font-medium">신청일</TableHead>
-            <TableHead className="text-universe-text-primary font-medium">액션</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {planets.map((planet) => (
-            <TableRow 
-              key={planet.id} 
-              className="border-universe-surface/20 hover:bg-universe-surface/10 transition-colors"
-            >
-              {/* 게임 정보 */}
-              <TableCell className="py-4">
-                <div className="flex items-start gap-3">
-                  {/* 썸네일 */}
-                  <div className="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden border border-universe-surface/30">
-                    <img
-                      src={planet.thumbnailUrl}
-                      alt={planet.gameName}
-                      className="w-full h-full object-cover"
-                      style={{ imageRendering: 'pixelated' }}
+    <div className="space-y-4">
+      {planets.map((planet) => (
+        <Card key={planet.id} className="p-6 border-universe-surface/30 bg-universe-surface/50">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* 행성 정보 */}
+            <div className="space-y-4">
+              <PlanetThumbnail 
+                thumbnailUrl={planet.planetThumbnailUrl} 
+                gameName={planet.gameName} 
+              />
+              
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary" className="bg-universe-primary/20 text-universe-primary border-universe-primary/30">
+                    {planet.genre}
+                  </Badge>
+                  <Badge variant="outline" className="border-universe-secondary/30 text-universe-secondary">
+                    {planet.planetType}
+                  </Badge>
+                </div>
+                
+                <p className="text-sm text-universe-text-secondary">
+                  {planet.tagline}
+                </p>
+                
+                <p className="text-xs text-universe-text-secondary/70 line-clamp-2">
+                  {planet.description}
+                </p>
+              </div>
+            </div>
+
+            {/* 외부 링크 */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Download className="w-4 h-4 text-universe-primary" />
+                <a
+                  href={planet.downloadUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-universe-primary hover:text-universe-primary/80 underline"
+                >
+                  다운로드 링크
+                </a>
+              </div>
+              
+              {planet.homepageUrl && (
+                <div className="flex items-center gap-2">
+                  <Globe className="w-4 h-4 text-universe-secondary" />
+                  <a
+                    href={planet.homepageUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-universe-secondary hover:text-universe-secondary/80 underline"
+                  >
+                    공식 웹사이트
+                  </a>
+                </div>
+              )}
+              
+              <div className="text-xs text-universe-text-secondary/70">
+                신청일: {planet.createdAt.toLocaleDateString('ko-KR')}
+              </div>
+            </div>
+
+            {/* 액션 버튼 */}
+            <div className="space-y-3">
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onPreview(planet)}
+                  className="flex-1 border-universe-primary/30 text-universe-primary hover:bg-universe-primary/10"
+                >
+                  <Eye className="w-4 h-4 mr-1" />
+                  미리보기
+                </Button>
+              </div>
+
+              {planet.status === 'pending' && (
+                <>
+                  <div className="space-y-2">
+                    <textarea
+                      placeholder="피드백 입력 (선택사항)"
+                      value={feedback[planet.id] || ''}
+                      onChange={(e) => setFeedback(prev => ({ ...prev, [planet.id]: e.target.value }))}
+                      className="w-full p-2 text-xs border border-universe-surface/30 rounded bg-universe-surface/20 text-universe-text-primary resize-none"
+                      rows={2}
                     />
                   </div>
-                  
-                  {/* 게임 정보 */}
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-medium text-universe-text-primary truncate">
-                      {planet.gameName}
-                    </h3>
-                    <p className="text-sm text-universe-text-secondary line-clamp-2 mt-1">
-                      {planet.tagline}
-                    </p>
-                    <div className="flex items-center gap-2 mt-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => onPreview(planet)}
-                        className="h-6 px-2 text-xs text-universe-secondary hover:text-universe-secondary/80 hover:bg-universe-secondary/10"
-                      >
-                        <Eye className="w-3 h-3 mr-1" />
-                        미리보기
-                      </Button>
-                      {planet.downloadUrl && (
-                        <a
-                          href={planet.downloadUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-universe-primary hover:text-universe-primary/80 flex items-center gap-1"
-                        >
-                          <ExternalLink className="w-3 h-3" />
-                          다운로드
-                        </a>
-                      )}
-                    </div>
+
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => handleStatusUpdate(planet.id, 'approved')}
+                      disabled={isUpdating || updateStatus.isPending}
+                      className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                      size="sm"
+                    >
+                      <CheckCircle className="w-4 h-4 mr-1" />
+                      승인
+                    </Button>
+                    
+                    <Button
+                      onClick={() => handleStatusUpdate(planet.id, 'rejected')}
+                      disabled={isUpdating || updateStatus.isPending}
+                      className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                      size="sm"
+                    >
+                      <XCircle className="w-4 h-4 mr-1" />
+                      거절
+                    </Button>
                   </div>
-                </div>
-              </TableCell>
+                </>
+              )}
 
-              {/* 장르 */}
-              <TableCell>
-                <Badge variant="outline" className="border-universe-surface/30 text-universe-text-secondary">
-                  {planet.genre}
-                </Badge>
-              </TableCell>
-
-              {/* 행성 유형 */}
-              <TableCell>
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-full bg-gradient-to-br from-universe-primary/20 to-universe-secondary/20 border border-universe-surface/30"></div>
-                  <span className="text-sm text-universe-text-secondary capitalize">
-                    {planet.planetType.replace('_', ' ')}
-                  </span>
-                </div>
-              </TableCell>
-
-              {/* 커스터마이징 정보 */}
-              <TableCell>
-                <CustomizationInfo customization={planet.customization} />
-              </TableCell>
-
-              {/* 상태 */}
-              <TableCell>
+              {planet.status !== 'pending' && (
                 <div className="flex items-center gap-2">
                   {getStatusIcon(planet.status)}
-                  {getStatusBadge(planet.status)}
+                  <span className="text-sm font-medium">
+                    {planet.status === 'approved' ? '승인됨' : '거절됨'}
+                  </span>
                 </div>
-              </TableCell>
-
-              {/* 신청일 */}
-              <TableCell>
-                <div className="text-sm text-universe-text-secondary">
-                  <div>{formatDistanceToNow(new Date(planet.createdAt), { addSuffix: true, locale: ko })}</div>
-                  <div className="text-xs text-universe-text-secondary/70 mt-1">
-                    {new Date(planet.createdAt).toLocaleDateString('ko-KR')}
-                  </div>
-                </div>
-              </TableCell>
-
-              {/* 액션 */}
-              <TableCell>
-                <div className="flex items-center gap-2">
-                  {planet.status === 'pending' && (
-                    <>
-                      <Button
-                        size="sm"
-                        onClick={() => onStatusUpdate(planet.id, 'approved')}
-                        className="bg-green-500 hover:bg-green-600 text-white h-8 px-3"
-                        disabled={isUpdating}
-                      >
-                        <CheckCircle className="w-3 h-3 mr-1" />
-                        {isUpdating ? '처리 중...' : '승인'}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => onStatusUpdate(planet.id, 'rejected')}
-                        className="border-red-500/30 text-red-400 hover:bg-red-500/10 h-8 px-3"
-                        disabled={isUpdating}
-                      >
-                        <XCircle className="w-3 h-3 mr-1" />
-                        {isUpdating ? '처리 중...' : '거절'}
-                      </Button>
-                    </>
-                  )}
-                  
-                  {planet.status === 'approved' && (
-                    <Badge variant="secondary" className="bg-green-500/20 text-green-400 border-green-500/30">
-                      승인 완료
-                    </Badge>
-                  )}
-                  
-                  {planet.status === 'rejected' && (
-                    <Badge variant="secondary" className="bg-red-500/20 text-red-400 border-red-500/30">
-                      거절됨
-                    </Badge>
-                  )}
-                </div>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+              )}
+            </div>
+          </div>
+        </Card>
+      ))}
     </div>
   );
 }
