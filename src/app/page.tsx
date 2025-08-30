@@ -10,8 +10,8 @@ export default function Home() {
   return (
     <PlanetModalProvider>
       <div className="w-screen h-screen bg-black relative">
-        {/* 네비게이션 바 */}
-        <div className="absolute top-0 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur-xl border-b border-slate-700/50">
+        {/* 네비게이션 바 - fixed로 변경하여 겹침 방지 */}
+        <div className="fixed top-0 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur-xl border-b border-slate-700/50">
           <div className="flex items-center justify-between px-6 py-4">
             <div className="flex items-center gap-6">
               <div className="text-2xl font-orbitron font-bold text-universe-text-primary">
@@ -37,7 +37,10 @@ export default function Home() {
           </div>
         </div>
         
-        <UniverseMap />
+        {/* UniverseMap에 상단 마진 추가하여 헤더와 겹치지 않도록 함 */}
+        <div className="pt-20 h-full">
+          <UniverseMap />
+        </div>
       </div>
     </PlanetModalProvider>
   );

@@ -7,6 +7,7 @@ import { PreviewCardPortal } from './PreviewCard';
 import { Planet, CameraState, InteractionState } from '@/types/universe';
 import { UNIVERSE_CONFIG, CAMERA_CONFIG } from '@/constants/universe';
 import { generateRandomPlanets } from '@/lib/universe-utils';
+import { StarBackground } from '@/components/ui/StarBackground';
 import * as PIXI from 'pixi.js';
 import { useRouter } from 'next/navigation';
 
@@ -123,24 +124,11 @@ export function UniverseMap({ className = '' }: UniverseMapProps) {
 
   return (
     <div className={`relative w-full h-full overflow-hidden bg-universe-background ${className}`}>
-      {/* 검색 입력 */}
-      <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-40">
-        <div className="relative">
-          <input
-            data-testid="map-search-input"
-            type="text"
-            placeholder="게임명으로 검색..."
-            className="w-80 px-4 py-2 bg-universe-surface/90 backdrop-blur-md rounded-lg border border-universe-surface/30 text-universe-text-primary placeholder:text-universe-text-secondary/50"
-          />
-          <button
-            data-testid="map-search-submit"
-            className="absolute right-2 top-1/2 transform -translate-y-1/2 px-3 py-1 bg-universe-primary hover:bg-universe-primary/90 text-white rounded-md text-sm"
-          >
-            검색
-          </button>
-        </div>
+      {/* 움직이는 우주 배경 - 가장 뒤쪽 레이어 */}
+      <div className="absolute inset-0 z-0">
+        <StarBackground />
       </div>
-
+      
       {/* 우주 맵 캔버스 */}
       <CanvasLayer
         width={dimensions.width}

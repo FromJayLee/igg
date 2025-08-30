@@ -13,7 +13,6 @@ import { Label } from '@/components/ui/label';
 import { FileUpload } from './FileUpload';
 import { AdoptionFormSchema, AdoptionFormData, Genre, GENRES } from '@/types/adoption';
 import { Rocket, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
-import { generatePlanetThumbnail, renderPlanetCanvas } from '@/lib/planet-generator';
 
 interface AdoptionFormProps {
   className?: string;
@@ -26,9 +25,6 @@ export function AdoptionForm({ className = '' }: AdoptionFormProps) {
   const [screenshotFiles, setScreenshotFiles] = useState<File[]>([]);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState(false);
-
-  const [planetPreviewCanvas, setPlanetPreviewCanvas] = useState<HTMLCanvasElement | null>(null);
-  const [previewLoading, setPreviewLoading] = useState(false);
 
   const {
     register,
@@ -52,41 +48,6 @@ export function AdoptionForm({ className = '' }: AdoptionFormProps) {
 
   // 폼 값 감시
   const watchedValues = watch();
-  const { gameName, genre, description } = watchedValues;
-
-  // 행성 미리보기 생성 (디바운스 적용)
-  const generatePreview = useCallback(async () => {
-    if (!gameName?.trim() || !genre || !description?.trim()) {
-      setPlanetPreviewCanvas(null);
-      return;
-    }
-
-    setPreviewLoading(true);
-    
-    try {
-      const canvas = await renderPlanetCanvas({
-        name: gameName.trim(),
-        genre: genre,
-        description: description.trim(),
-        size: 200
-      });
-      setPlanetPreviewCanvas(canvas);
-    } catch (error) {
-      console.error('행성 미리보기 생성 실패:', error);
-      setPlanetPreviewCanvas(null);
-    } finally {
-      setPreviewLoading(false);
-    }
-  }, [gameName, genre, description]);
-
-  // 폼 값 변경 시 미리보기 자동 생성 (디바운스)
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      generatePreview();
-    }, 500);
-
-    return () => clearTimeout(timeoutId);
-  }, [gameName, genre, description, generatePreview]);
 
   // 에러 메시지 초기화
   useEffect(() => {
@@ -126,14 +87,6 @@ export function AdoptionForm({ className = '' }: AdoptionFormProps) {
         });
       }, 200);
 
-      // 절차적 행성 썸네일 생성
-      const thumbnailBlob = await generatePlanetThumbnail({
-        name: data.gameName.trim(),
-        genre: data.genre,
-        description: data.description.trim(),
-        size: 128
-      });
-
       // FormData 생성
       const formData = new FormData();
       formData.append('gameName', data.gameName.trim());
@@ -144,9 +97,6 @@ export function AdoptionForm({ className = '' }: AdoptionFormProps) {
       if (data.homepageUrl?.trim()) {
         formData.append('homepageUrl', data.homepageUrl.trim());
       }
-
-      // 썸네일 추가
-      formData.append('thumbnail', thumbnailBlob, 'planet.png');
       
       // 스크린샷 추가
       screenshotFiles.forEach((file, index) => {
@@ -374,69 +324,6 @@ export function AdoptionForm({ className = '' }: AdoptionFormProps) {
             </p>
           )}
         </div>
-      </div>
-
-      {/* 절차적 행성 미리보기 */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-3">
-          <Rocket className="w-6 h-6 text-universe-primary" />
-          <h3 className="text-xl font-orbitron font-medium text-universe-text-primary">
-            자동 생성된 행성 미리보기
-          </h3>
-        </div>
-        
-        <div className="flex justify-center">
-          <div className="relative">
-            {previewLoading ? (
-              <div 
-                className="border-2 border-universe-surface/30 rounded-lg bg-universe-surface/20 flex items-center justify-center"
-                style={{ width: 200, height: 200 }}
-              >
-                <div className="flex flex-col items-center gap-2">
-                  <Loader2 className="w-6 h-6 animate-spin text-universe-primary" />
-                  <div className="text-universe-text-secondary text-sm text-center">
-                    행성 생성 중...
-                  </div>
-                </div>
-              </div>
-            ) : planetPreviewCanvas ? (
-              <div 
-                data-testid="thumbnail-preview"
-                className="border-2 border-universe-surface/30 rounded-lg overflow-hidden"
-                style={{ width: 200, height: 200 }}
-              >
-                <canvas
-                  ref={(el) => {
-                    if (el && planetPreviewCanvas) {
-                      const ctx = el.getContext('2d');
-                      if (ctx) {
-                        el.width = 200;
-                        el.height = 200;
-                        ctx.drawImage(planetPreviewCanvas, 0, 0);
-                      }
-                    }
-                  }}
-                  width={200}
-                  height={200}
-                  className="w-full h-full"
-                />
-              </div>
-            ) : (
-              <div 
-                className="border-2 border-universe-surface/30 rounded-lg bg-universe-surface/20 flex items-center justify-center"
-                style={{ width: 200, height: 200 }}
-              >
-                <div className="text-universe-text-secondary text-sm text-center">
-                  게임 정보를 입력하면<br />자동으로 생성됩니다
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-        
-        <p className="text-sm text-universe-text-secondary text-center">
-          게임명, 장르, 설명을 기반으로 절차적으로 생성되는 고유한 행성입니다
-        </p>
       </div>
 
       {/* 진행률 표시 */}
