@@ -320,14 +320,41 @@ export function CanvasLayer({
         animationFrameRef.current = null;
       }
       
-      // PixiJS 앱 정리
+      // PixiJS 앱 정리 - "언바인드 → destroy → ref null" 순서 보장
       const app = appRef.current;
       if (app) {
-        appRef.current = null; // 참조 끊기
         try {
+          // 1) 먼저 모든 이벤트 리스너 해제 (대상 존재/미파괴 확인)
+          const safeOff = (em: any, ev: string, fn?: any) => {
+            if (em && typeof em.off === 'function') {
+              try {
+                if (fn) {
+                  em.off(ev, fn);
+                } else {
+                  em.off(ev);
+                }
+              } catch (e) {
+                console.warn(`이벤트 해제 실패: ${ev}`, e);
+              }
+            }
+          };
+
+          // 스테이지의 모든 이벤트 해제
+          if (app.stage) {
+            safeOff(app.stage, 'pointerdown');
+            safeOff(app.stage, 'pointermove');
+            safeOff(app.stage, 'pointerup');
+            safeOff(app.stage, 'pointerupoutside');
+            safeOff(app.stage, 'globalpointermove');
+          }
+
+          // 2) 그 다음 앱 파괴
           app.destroy(true);
         } catch (e) {
           console.warn('PixiJS 앱 정리 중 오류:', e);
+        } finally {
+          // 3) 마지막에 참조 해제
+          appRef.current = null;
         }
       }
     };
@@ -408,11 +435,32 @@ export function CanvasLayer({
     app.stage.on('pointerupoutside', dragOff);
 
     return () => {
-      app.stage.off('pointerdown', handleMouseDown);
-      app.stage.off('pointermove', handleMouseMove);
-      app.stage.off('pointerup', handleMouseUp);
-      app.stage.off('pointerupoutside', handleMouseUp);
-      app.stage.off('globalpointermove');
+      // 안전한 이벤트 해제 (대상 존재/미파괴 확인)
+      const safeOff = (em: any, ev: string, fn?: any) => {
+        if (em && typeof em.off === 'function') {
+          try {
+            if (fn) {
+              em.off(ev, fn);
+            } else {
+              em.off(ev);
+            }
+          } catch (e) {
+            console.warn(`이벤트 해제 실패: ${ev}`, e);
+          }
+        }
+      };
+
+      // 모든 이벤트 리스너 해제
+      safeOff(app.stage, 'pointerdown', handleMouseDown);
+      safeOff(app.stage, 'pointermove', handleMouseMove);
+      safeOff(app.stage, 'pointerup', handleMouseUp);
+      safeOff(app.stage, 'pointerupoutside', handleMouseUp);
+      safeOff(app.stage, 'globalpointermove');
+      
+      // 드래그 관련 이벤트도 해제
+      safeOff(app.stage, 'pointerdown', dragOn);
+      safeOff(app.stage, 'pointerup', dragOff);
+      safeOff(app.stage, 'pointerupoutside', dragOff);
     };
   }, [handleMouseDown, handleMouseMove, handleMouseUp, isInitialized]);
 
