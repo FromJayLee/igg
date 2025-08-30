@@ -102,3 +102,30 @@
     user-select: none;
   }
 }
+
+/* 행성 회전 애니메이션 */
+@layer utilities {
+  .animate-spin-slow {
+    animation: spin 8s linear infinite;
+  }
+  
+  .animate-spin-slow-reverse {
+    animation: spin 12s linear infinite reverse;
+  }
+}
+
+/* 네온 글로우 효과 */
+@layer utilities {
+  .animate-neon-glow {
+    animation: neon-glow 2s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes neon-glow {
+  from {
+    text-shadow: 0 0 5px #ff2d9d, 0 0 10px #ff2d9d, 0 0 15px #ff2d9d;
+  }
+  to {
+    text-shadow: 0 0 10px #ff2d9d, 0 0 20px #ff2d9d, 0 0 30px #ff2d9d;
+  }
+}

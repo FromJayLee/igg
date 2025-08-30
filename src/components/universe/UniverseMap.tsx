@@ -1,16 +1,21 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { CanvasLayer } from './CanvasLayer';
+import { PreviewCardPortal } from './PreviewCard';
+import { PlanetDetailModal } from './PlanetDetailModal';
 import { Planet, CameraState, InteractionState } from '@/types/universe';
 import { UNIVERSE_CONFIG, CAMERA_CONFIG } from '@/constants/universe';
 import { generateRandomPlanets } from '@/lib/universe-utils';
+import * as PIXI from 'pixi.js';
+import { useRouter } from 'next/navigation';
 
 interface UniverseMapProps {
   className?: string;
 }
 
 export function UniverseMap({ className = '' }: UniverseMapProps) {
+  const router = useRouter();
   const [planets, setPlanets] = useState<Planet[]>([]);
   const [camera, setCamera] = useState<CameraState>({
     x: 0,
@@ -28,6 +33,8 @@ export function UniverseMap({ className = '' }: UniverseMapProps) {
     dragStartX: 0,
     dragStartY: 0,
   });
+  const [selectedPlanetId, setSelectedPlanetId] = useState<string | null>(null);
+  const appRef = useRef<PIXI.Application | null>(null);
 
   // 초기 행성 생성
   useEffect(() => {
@@ -45,60 +52,22 @@ export function UniverseMap({ className = '' }: UniverseMapProps) {
     setInteraction(newInteraction);
   }, []);
 
-  // 키보드 네비게이션 (선택사항)
-  const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    const moveSpeed = 100 / camera.scale;
-    
-    switch (e.key) {
-      case 'ArrowUp':
-      case 'w':
-        setCamera(prev => ({
-          ...prev,
-          targetY: prev.targetY - moveSpeed,
-        }));
-        break;
-      case 'ArrowDown':
-      case 's':
-        setCamera(prev => ({
-          ...prev,
-          targetY: prev.targetY + moveSpeed,
-        }));
-        break;
-      case 'ArrowLeft':
-      case 'a':
-        setCamera(prev => ({
-          ...prev,
-          targetX: prev.targetX - moveSpeed,
-        }));
-        break;
-      case 'ArrowRight':
-      case 'd':
-        setCamera(prev => ({
-          ...prev,
-          targetX: prev.targetX + moveSpeed,
-        }));
-        break;
-      case '0':
-        // 홈 포지션으로 리셋
-        setCamera({
-          x: 0,
-          y: 0,
-          scale: 1,
-          targetX: 0,
-          targetY: 0,
-          targetScale: 1,
-        });
-        break;
-    }
-  }, [camera.scale]);
+  // PixiJS 앱 참조 저장
+  const handleAppReady = useCallback((app: PIXI.Application) => {
+    appRef.current = app;
+  }, []);
 
-  // 키보드 이벤트 리스너 등록
-  useEffect(() => {
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [handleKeyDown]);
+  // 행성 클릭 핸들러
+  const handlePlanetClick = useCallback((planetId: string) => {
+    setSelectedPlanetId(planetId);
+    router.push(`/planet/${planetId}`, { scroll: false });
+  }, [router]);
+
+  // 모달 닫기 핸들러
+  const handleModalClose = useCallback(() => {
+    setSelectedPlanetId(null);
+    router.push('/', { scroll: false });
+  }, [router]);
 
   // 성능 모니터링 (개발 모드에서만)
   useEffect(() => {
@@ -135,37 +104,21 @@ export function UniverseMap({ className = '' }: UniverseMapProps) {
         interaction={interaction}
         onCameraChange={handleCameraChange}
         onInteractionChange={handleInteractionChange}
+        onAppReady={handleAppReady}
+        onPlanetClick={handlePlanetClick}
       />
       
-      {/* UI 오버레이 */}
-      <div className="absolute top-4 left-4 z-10">
-        <div className="bg-universe-surface/80 backdrop-blur-md rounded-xl p-4 border border-white/10 shadow-2xl">
-          <div className="flex items-center gap-6 text-universe-text-primary">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-universe-primary rounded-full animate-cyber-pulse"></div>
-              <span className="text-universe-text-secondary font-pixel text-xs">카메라:</span>
-              <span className="ml-2 font-orbitron text-sm font-medium">
-                X: {Math.round(camera.x)}, Y: {Math.round(camera.y)}
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-universe-secondary rounded-full animate-neon-glow"></div>
-              <span className="text-universe-text-secondary font-pixel text-xs">줌:</span>
-              <span className="ml-2 font-orbitron text-sm font-medium">
-                {Math.round(camera.scale * 100)}%
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-universe-primary rounded-full animate-cyber-pulse"></div>
-              <span className="text-universe-text-secondary font-pixel text-xs">행성:</span>
-              <span className="ml-2 font-orbitron text-sm font-medium">
-                {planets.length}개
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
+      {/* Hover 미리보기 카드 */}
+      {appRef.current && <PreviewCardPortal app={appRef.current} />}
+      
+      {/* 행성 상세 정보 모달 */}
+      {selectedPlanetId && (
+        <PlanetDetailModal
+          planetId={selectedPlanetId}
+          onClose={handleModalClose}
+        />
+      )}
+      
       {/* 컨트롤 가이드 */}
       <div className="absolute bottom-4 left-4 z-10">
         <div className="bg-universe-surface/80 backdrop-blur-md rounded-xl p-4 border border-white/10 shadow-2xl">
@@ -178,14 +131,6 @@ export function UniverseMap({ className = '' }: UniverseMapProps) {
             <div className="flex items-center gap-2">
               <span className="text-universe-secondary">🔍</span>
               <span>휠: 줌 인/아웃</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-universe-primary">⌨️</span>
-              <span>WASD/화살표: 이동</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-universe-secondary">0</span>
-              <span>홈으로</span>
             </div>
           </div>
         </div>

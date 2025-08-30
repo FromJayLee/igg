@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useCallback, useState } from 'react';
 import * as PIXI from 'pixi.js';
 import { Planet, CameraState, InteractionState } from '@/types/universe';
 import { CAMERA_CONFIG, PERFORMANCE_CONFIG } from '@/constants/universe';
-import { isInViewport, clamp, lerp } from '@/lib/universe-utils';
+import { isInViewport, clamp, lerp, hoverState, PreviewCardManager } from '@/lib/universe-utils';
 
 interface CanvasLayerProps {
   width: number;
@@ -14,6 +14,8 @@ interface CanvasLayerProps {
   interaction: InteractionState;
   onCameraChange: (camera: CameraState) => void;
   onInteractionChange: (interaction: InteractionState) => void;
+  onAppReady: (app: PIXI.Application) => void;
+  onPlanetClick?: (planetId: string) => void;
 }
 
 export function CanvasLayer({
@@ -24,6 +26,8 @@ export function CanvasLayer({
   interaction,
   onCameraChange,
   onInteractionChange,
+  onAppReady,
+  onPlanetClick,
 }: CanvasLayerProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const appRef = useRef<PIXI.Application | null>(null);
@@ -74,6 +78,9 @@ export function CanvasLayer({
       createStarField();
       
       setIsInitialized(true);
+      
+      // 앱 준비 완료 알림
+      onAppReady(app);
     } catch (error) {
       console.error('PixiJS 초기화 실패:', error);
       if (app && mounted) {
@@ -144,6 +151,32 @@ export function CanvasLayer({
       // 인터랙션 설정 (PixiJS v8에서는 eventMode 사용)
       planetGroup.eventMode = 'static';
       planetGroup.cursor = 'pointer';
+
+      // hover 이벤트 추가
+      planetGroup.on('pointerover', () => {
+        hoverState.target = planet;
+        hoverState.visible = true;
+        PreviewCardManager.open(planet);
+      });
+      
+      planetGroup.on('pointerout', () => {
+        // 다른 스프라이트로 이동 시 pointerover가 먼저 실행되므로 지연 처리
+        setTimeout(() => {
+          if (hoverState.target?.id === planet.id) {
+            hoverState.target = null;
+            hoverState.visible = false;
+            PreviewCardManager.close();
+          }
+        }, 80);
+      });
+
+      // 클릭 이벤트 추가
+      planetGroup.on('pointertap', () => {
+        // 행성 클릭 시 상세 모달 열기
+        if (onPlanetClick) {
+          onPlanetClick(planet.id);
+        }
+      });
 
       planetsContainer.addChild(planetGroup);
     });
@@ -339,12 +372,37 @@ export function CanvasLayer({
     app.stage.on('pointermove', handleMouseMove);
     app.stage.on('pointerup', handleMouseUp);
     app.stage.on('pointerupoutside', handleMouseUp);
+    
+    // 전역 pointermove 이벤트 (hover 카드 위치 업데이트용)
+    app.stage.on('globalpointermove', (e: PIXI.FederatedPointerEvent) => {
+      const g = e.global;
+      hoverState.mouse.x = g.x;
+      hoverState.mouse.y = g.y;
+    });
+    
+    // 드래그/줌 상태와 hover 카드 연동
+    const dragOn = () => {
+      hoverState.dragging = true;
+      PreviewCardManager.hide();
+    };
+    const dragOff = () => {
+      hoverState.dragging = false;
+      if (hoverState.target) {
+        PreviewCardManager.show();
+      }
+    };
+    
+    // 드래그 시작/종료 시 hover 카드 숨김/표시
+    app.stage.on('pointerdown', dragOn);
+    app.stage.on('pointerup', dragOff);
+    app.stage.on('pointerupoutside', dragOff);
 
     return () => {
       app.stage.off('pointerdown', handleMouseDown);
       app.stage.off('pointermove', handleMouseMove);
       app.stage.off('pointerup', handleMouseUp);
       app.stage.off('pointerupoutside', handleMouseUp);
+      app.stage.off('globalpointermove');
     };
   }, [handleMouseDown, handleMouseMove, handleMouseUp, isInitialized]);
 

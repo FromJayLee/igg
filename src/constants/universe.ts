@@ -15,31 +15,37 @@ export const PLANET_TYPES = {
     color: '#4ade80',
     glowColor: '#22c55e',
     name: 'Terran',
+    genre: '액션 어드벤처',
   },
   gas_giant: {
     color: '#fbbf24',
     glowColor: '#f59e0b',
     name: 'Gas Giant',
+    genre: '퍼즐',
   },
   ice_world: {
     color: '#93c5fd',
     glowColor: '#3b82f6',
     name: 'Ice World',
+    genre: '전략',
   },
   desert: {
     color: '#f97316',
     glowColor: '#ea580c',
     name: 'Desert',
+    genre: 'RPG',
   },
   ocean: {
     color: '#06b6d4',
     glowColor: '#0891b2',
     name: 'Ocean',
+    genre: '시뮬레이션',
   },
   volcanic: {
     color: '#ef4444',
     glowColor: '#dc2626',
     name: 'Volcanic',
+    genre: '슈팅',
   },
 } as const;
 
