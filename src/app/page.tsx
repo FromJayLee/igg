@@ -11,7 +11,7 @@ export default function Home() {
     <PlanetModalProvider>
       <div className="w-screen h-screen bg-black relative">
         {/* 네비게이션 바 */}
-        <div className="absolute top-0 left-0 right-0 z-50 bg-black/90 backdrop-blur-xl border-b border-white/10">
+        <div className="absolute top-0 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur-xl border-b border-slate-700/50">
           <div className="flex items-center justify-between px-6 py-4">
             <div className="flex items-center gap-6">
               <div className="text-2xl font-orbitron font-bold text-universe-text-primary">
